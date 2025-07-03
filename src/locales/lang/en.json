@@ -1,6 +1,11 @@
 {
     "nav": {
         "home": "Home",
+        "dashboard": "Dashboard",
+        "tenantDashboard": "Analytics Dashboard",
+        "shopKPI": {
+            "shopKpi": "KPI and Goals"
+        },
         "singleMenuItem": "Single menu item",
         "collapseMenu": {
             "collapseMenu": "Collapse menu item",

@@ -7,6 +7,7 @@ function useAuthority(
     emptyCheck = false,
 ) {
     const roleMatched = useMemo(() => {
+        // Reverted to original logic: check if any required authority role is present in userAuthority
         return authority.some((role) => userAuthority.includes(role))
     }, [authority, userAuthority])
 

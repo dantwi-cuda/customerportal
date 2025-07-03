@@ -1,0 +1,7 @@
+export { default as ManufacturerManagementPage } from './manufacturers/ManufacturerManagementPage'
+export { default as BrandManagementPage } from './brands/BrandManagementPage'
+export { default as SupplierManagementPage } from './suppliers/SupplierManagementPage'
+export { default as PartCategoryManagementPage } from './part-categories/PartCategoryManagementPage'
+export { default as MasterPartManagementPage } from './master-parts/MasterPartManagementPage'
+export { default as SupplierPartManagementPage } from './supplier-parts/SupplierPartManagementPage'
+export { default as MatchPartManagementPage } from './match-parts/MatchPartManagementPage'

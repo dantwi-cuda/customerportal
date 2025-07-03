@@ -11,7 +11,10 @@ export type SignInResponse = {
         authority: string[]
         avatar: string
         email: string
+        customerName?: string  // Added for multi-tenant support
+        customerId?: string    // Added for multi-tenant support
     }
+    mfaRequired?: boolean     // Added for MFA support
 }
 
 export type SignUpResponse = SignInResponse
@@ -30,9 +33,15 @@ export type ResetPassword = {
     password: string
 }
 
-export type AuthRequestStatus = 'success' | 'failed' | ''
+export type AuthRequestStatus = 'success' | 'failed' | 'mfa_required' | ''
 
 export type AuthResult = Promise<{
+    status: AuthRequestStatus
+    message: string
+    email?: string  // For MFA flow
+}>
+
+export type MfaVerifyResponse = Promise<{
     status: AuthRequestStatus
     message: string
 }>
@@ -43,11 +52,14 @@ export type User = {
     userName?: string | null
     email?: string | null
     authority?: string[]
+    customerName?: string | null  // Added for multi-tenant support
+    customerId?: string | null    // Added for multi-tenant support
+    tenantId?: string | null      // Added for tenant admin
 }
 
 export type Token = {
     accessToken: string
-    refereshToken?: string
+    refreshToken?: string
 }
 
 export type OauthSignInCallbackPayload = {

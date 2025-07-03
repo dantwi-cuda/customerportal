@@ -11,6 +11,7 @@ import { z } from 'zod'
 import type { ZodType } from 'zod'
 import type { CommonProps } from '@/@types/common'
 import type { ReactNode } from 'react'
+import MfaVerification from './MfaVerification'
 
 interface SignInFormProps extends CommonProps {
     disableSubmit?: boolean
@@ -34,6 +35,8 @@ const validationSchema: ZodType<SignInFormSchema> = z.object({
 
 const SignInForm = (props: SignInFormProps) => {
     const [isSubmitting, setSubmitting] = useState<boolean>(false)
+    const [mfaRequired, setMfaRequired] = useState<boolean>(false)
+    const [userEmail, setUserEmail] = useState<string>('')
 
     const { disableSubmit = false, className, setMessage, passwordHint } = props
 
@@ -43,8 +46,8 @@ const SignInForm = (props: SignInFormProps) => {
         control,
     } = useForm<SignInFormSchema>({
         defaultValues: {
-            email: 'admin-01@ecme.com',
-            password: '123Qwe',
+            email: 'dev.admin@test.com',
+            password: 'Dev123!@#',
         },
         resolver: zodResolver(validationSchema),
     })
@@ -59,12 +62,38 @@ const SignInForm = (props: SignInFormProps) => {
 
             const result = await signIn({ email, password })
 
-            if (result?.status === 'failed') {
+            if (result?.status === 'mfa_required') {
+                setUserEmail(email)
+                setMfaRequired(true)
+                setMessage?.(
+                    'Please verify your identity with the code sent to your email',
+                )
+            } else if (result?.status === 'failed') {
                 setMessage?.(result.message)
             }
         }
 
         setSubmitting(false)
+    }
+
+    const onMfaVerified = () => {
+        // MFA verification successful, handled by Auth context which will redirect
+        setMfaRequired(false)
+    }
+
+    const onBackToLogin = () => {
+        setMfaRequired(false)
+        setMessage?.('')
+    }
+
+    if (mfaRequired) {
+        return (
+            <MfaVerification
+                email={userEmail}
+                onVerified={onMfaVerified}
+                onBack={onBackToLogin}
+            />
+        )
     }
 
     return (

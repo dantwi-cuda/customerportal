@@ -1,0 +1,228 @@
+import React, { useState, useEffect } from 'react'
+import {
+    Card,
+    Input,
+    Button,
+    Form,
+    FormItem,
+    FormContainer,
+    Checkbox,
+    Select,
+    Notification,
+    toast,
+} from '@/components/ui'
+import UserService from '@/services/UserService'
+import RoleService from '@/services/RoleService'
+import { useNavigate } from 'react-router-dom'
+import type { UserDto, CreateUserRequest } from '@/@types/user'
+import type { RoleDto } from '@/@types/role'
+
+const UserCreateForm = () => {
+    const navigate = useNavigate()
+    const [loading, setLoading] = useState(false)
+    const [roles, setRoles] = useState<RoleDto[]>([])
+
+    useEffect(() => {
+        fetchRoles()
+    }, [])
+
+    const fetchRoles = async () => {
+        try {
+            console.log('Fetching roles for user creation')
+            const data = await RoleService.getRoles()
+
+            // Ensure we've got valid data
+            if (!data || !Array.isArray(data)) {
+                throw new Error('Invalid roles data received')
+            }
+
+            console.log('Roles received for create form:', data)
+            setRoles(data)
+        } catch (error) {
+            console.error('Error fetching roles for create form:', error)
+            toast.push(
+                <Notification title="Warning" type="warning" duration={3000}>
+                    Could not load roles list. Some functions may be limited.
+                </Notification>
+            )
+        }
+    }
+
+    const handleSubmit = async (values: {
+        name: string
+        email: string
+        password: string
+        confirmPassword: string
+        isCustomerUser: boolean
+        isCCIUser: boolean
+        roles: string[]
+    }) => {
+        console.log('Create form values:', values)
+
+        if (values.password !== values.confirmPassword) {
+            toast.push(
+                <Notification title="Error" type="danger" duration={3000}>
+                    Passwords do not match
+                </Notification>
+            )
+            return
+        }
+
+        try {
+            setLoading(true)
+
+            // Create proper UserDto object according to the API schema
+            const userDto: UserDto = {
+                name: values.name,
+                email: values.email,
+                isCustomerUser: values.isCustomerUser || false,
+                isCCIUser: values.isCCIUser || false,
+                status: 'Active',
+            }
+
+            // Create the request according to the CreateUserRequest schema
+            const createUserRequest: CreateUserRequest = {
+                user: userDto,
+                password: values.password,
+                roles: values.roles || [], // Ensure roles is never undefined
+            }
+
+            console.log('Sending create user request:', JSON.stringify(createUserRequest))
+
+            // Call the API to create the user
+            await UserService.createUser(createUserRequest)
+
+            toast.push(
+                <Notification title="Success" type="success" duration={3000}>
+                    User created successfully
+                </Notification>
+            )
+            navigate('/admin/users')
+        } catch (error) {
+            console.error('Error creating user:', error)
+            toast.push(
+                <Notification title="Error" type="danger" duration={3000}>
+                    Failed to create user
+                </Notification>
+            )
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div>
+            <div className="container mx-auto">
+                <div className="mb-4 flex items-center justify-between">
+                    <h3>Create New User</h3>
+                </div>
+                <Card>
+                    <div className="max-w-md mx-auto">
+                        <FormContainer onFormSubmit={handleSubmit}>
+                            <FormItem
+                                label="Name"
+                                name="name"
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: 'Please enter name',
+                                    },
+                                ]}
+                            >
+                                <Input />
+                            </FormItem>
+                            <FormItem
+                                label="Email"
+                                name="email"
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: 'Please enter email',
+                                    },
+                                    {
+                                        type: 'email',
+                                        message: 'Please enter a valid email',
+                                    },
+                                ]}
+                            >
+                                <Input />
+                            </FormItem>
+                            <FormItem
+                                label="Password"
+                                name="password"
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: 'Please enter password',
+                                    },
+                                    {
+                                        min: 8,
+                                        message:
+                                            'Password must be at least 8 characters',
+                                    },
+                                ]}
+                            >
+                                <Input type="password" />
+                            </FormItem>
+                            <FormItem
+                                label="Confirm Password"
+                                name="confirmPassword"
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: 'Please confirm password',
+                                    },
+                                ]}
+                            >
+                                <Input type="password" />
+                            </FormItem>
+                            <FormItem label="User Type" name="userType">
+                                <div className="flex flex-col gap-2">
+                                    <FormItem
+                                        name="isCustomerUser"
+                                        valuePropName="checked"
+                                    >
+                                        <Checkbox>Customer Staff</Checkbox>
+                                    </FormItem>
+                                    <FormItem
+                                        name="isCCIUser"
+                                        valuePropName="checked"
+                                    >
+                                        <Checkbox>CCI Staff</Checkbox>
+                                    </FormItem>
+                                </div>
+                            </FormItem>
+                            <FormItem label="Roles" name="roles">
+                                <Select
+                                    placeholder="Select roles"
+                                    options={roles.map((role) => ({
+                                        value: role.id,
+                                        label: role.name,
+                                    }))}
+                                    isMulti
+                                />
+                            </FormItem>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <Button
+                                    type="button"
+                                    onClick={() => navigate('/admin/users')}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="solid"
+                                    type="submit"
+                                    loading={loading}
+                                >
+                                    Create User
+                                </Button>
+                            </div>
+                        </FormContainer>
+                    </div>
+                </Card>
+            </div>
+        </div>
+    )
+}
+
+export default UserCreateForm

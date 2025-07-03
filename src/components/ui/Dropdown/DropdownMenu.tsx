@@ -266,7 +266,7 @@ const DropdownMenu = (props: DropdownMenuProps & HTMLProps<HTMLElement>) => {
                     {title}
                 </DropdownToggle>
             ) : (
-                <li
+                <div
                     ref={toggleRef}
                     tabIndex={parent.activeIndex === item.index ? 0 : -1}
                     data-open={isOpen ? '' : undefined}
@@ -278,7 +278,7 @@ const DropdownMenu = (props: DropdownMenuProps & HTMLProps<HTMLElement>) => {
                     <DropdownSubItem>
                         {renderTitle ? renderTitle : title}
                     </DropdownSubItem>
-                </li>
+                </div>
             )}
             <MenuContext.Provider
                 value={{

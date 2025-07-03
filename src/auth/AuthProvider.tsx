@@ -1,9 +1,18 @@
-import { useRef, useImperativeHandle, useState } from 'react'
+import { useRef, useImperativeHandle, useState, useEffect } from 'react'
 import AuthContext from './AuthContext'
 import appConfig from '@/configs/app.config'
 import { useSessionUser, useToken } from '@/store/authStore'
-import { apiSignIn, apiSignOut, apiSignUp } from '@/services/AuthService'
-import { REDIRECT_URL_KEY } from '@/constants/app.constant'
+import {
+    apiSignIn,
+    apiSignOut,
+    apiSignUp,
+    verifyMfaCode,
+} from '@/services/AuthService'
+import {
+    getCustomerAccessToken,
+    endCustomerSession,
+} from '@/services/CustomerService'
+import { REDIRECT_URL_KEY, ORIGINAL_PORTAL_KEY } from '@/constants/app.constant'
 import { useNavigate } from 'react-router'
 import type {
     SignInCredential,
@@ -12,6 +21,7 @@ import type {
     OauthSignInCallbackPayload,
     User,
     Token,
+    MfaVerifyResponse,
 } from '@/@types/auth'
 import type { ReactNode, Ref } from 'react'
 import type { NavigateFunction } from 'react-router'
@@ -43,10 +53,47 @@ function AuthProvider({ children }: AuthProviderProps) {
     )
     const { token, setToken } = useToken()
     const [tokenState, setTokenState] = useState(token)
+    const [isCustomerPortal, setIsCustomerPortal] = useState(false)
+    const [customerName, setCustomerName] = useState('')
 
     const authenticated = Boolean(tokenState && signedIn)
 
     const navigatorRef = useRef<IsolatedNavigatorRef>(null)
+
+    // Determine if current session is in a customer portal
+    useEffect(() => {
+        const hostname = window.location.hostname
+
+        // Check if we're on a customer subdomain
+        if (hostname !== 'urlist.com' && hostname !== 'localhost') {
+            const parts = hostname.split('.')
+            if (parts.length >= 3) {
+                setIsCustomerPortal(true)
+
+                // Get customer name from session if available
+                if (user?.customerName) {
+                    setCustomerName(user.customerName)
+                } else {
+                    // Get customer name based on subdomain
+                    // This would typically be fetched from an API
+                    setCustomerName(parts[0])
+                }
+            }
+        }
+
+        // Check if we're accessing via token in URL (customer portal access)
+        const urlParams = new URLSearchParams(window.location.search)
+        const accessToken = urlParams.get('token')
+
+        if (accessToken && !authenticated) {
+            // Handle access token from URL (customer portal access flow)
+            handleSignIn({ accessToken }, undefined)
+
+            // Remove token from URL for security
+            const cleanUrl = window.location.pathname
+            window.history.replaceState({}, document.title, cleanUrl)
+        }
+    }, [authenticated, user])
 
     const redirect = () => {
         const search = window.location.search
@@ -58,13 +105,24 @@ function AuthProvider({ children }: AuthProviderProps) {
         )
     }
 
-    const handleSignIn = (tokens: Token, user?: User) => {
+    const handleSignIn = (
+        tokens: Token,
+        user?: User & { roles?: string[] },
+    ) => {
         setToken(tokens.accessToken)
         setTokenState(tokens.accessToken)
         setSessionSignedIn(true)
 
         if (user) {
-            setUser(user)
+            // Map backend roles to frontend authority
+            const userToStore: User = {
+                ...user,
+                authority: user.roles || user.authority || [], // Prioritize roles, then authority, then empty array
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            delete (userToStore as any).roles // Remove roles property to avoid confusion
+
+            setUser(userToStore)
         }
     }
 
@@ -79,6 +137,17 @@ function AuthProvider({ children }: AuthProviderProps) {
             const resp = await apiSignIn(values)
             if (resp) {
                 handleSignIn({ accessToken: resp.token }, resp.user)
+
+                // Check if MFA is required
+                if (resp.mfaRequired) {
+                    // Return early to allow MFA verification
+                    return {
+                        status: 'mfa_required',
+                        message: 'MFA verification required',
+                        email: values.email,
+                    }
+                }
+
                 redirect()
                 return {
                     status: 'success',
@@ -94,6 +163,32 @@ function AuthProvider({ children }: AuthProviderProps) {
             return {
                 status: 'failed',
                 message: errors?.response?.data?.message || errors.toString(),
+            }
+        }
+    }
+
+    const verifyMfa = async (
+        email: string,
+        code: string,
+    ): Promise<MfaVerifyResponse> => {
+        try {
+            const resp = await verifyMfaCode(email, code)
+            if (resp.success) {
+                handleSignIn({ accessToken: resp.token }, resp.user)
+                redirect()
+                return {
+                    status: 'success',
+                    message: '',
+                }
+            }
+            return {
+                status: 'failed',
+                message: resp.message || 'Invalid verification code',
+            }
+        } catch (error: any) {
+            return {
+                status: 'failed',
+                message: error?.response?.data?.message || error.toString(),
             }
         }
     }
@@ -124,12 +219,25 @@ function AuthProvider({ children }: AuthProviderProps) {
 
     const signOut = async () => {
         try {
+            // If in customer portal mode and accessed from main portal, return to main portal
+            if (isCustomerPortal && localStorage.getItem(ORIGINAL_PORTAL_KEY)) {
+                await endCustomerSession()
+                const originalPortal = localStorage.getItem(ORIGINAL_PORTAL_KEY)
+                localStorage.removeItem(ORIGINAL_PORTAL_KEY)
+
+                if (originalPortal) {
+                    window.location.href = originalPortal
+                    return
+                }
+            }
+
             await apiSignOut()
         } finally {
             handleSignOut()
             navigatorRef.current?.navigate('/')
         }
     }
+
     const oAuthSignIn = (
         callback: (payload: OauthSignInCallbackPayload) => void,
     ) => {
@@ -137,6 +245,71 @@ function AuthProvider({ children }: AuthProviderProps) {
             onSignIn: handleSignIn,
             redirect,
         })
+    }
+
+    const accessCustomerPortal = async (
+        customerId: string,
+    ): Promise<AuthResult> => {
+        try {
+            const resp = await getCustomerAccessToken(customerId)
+
+            if (resp && resp.token) {
+                // Store original portal to return to
+                localStorage.setItem(
+                    ORIGINAL_PORTAL_KEY,
+                    window.location.origin,
+                )
+
+                // Get customer domain
+                const customerDomain = resp.domain || `${customerId}.urlist.com`
+
+                // Redirect with token
+                const redirectUrl = `https://${customerDomain}/portal-access?token=${resp.token}`
+                window.location.href = redirectUrl
+
+                return {
+                    status: 'success',
+                    message: 'Redirecting to customer portal...',
+                }
+            }
+
+            return {
+                status: 'failed',
+                message: 'Unable to access customer portal',
+            }
+        } catch (error: any) {
+            return {
+                status: 'failed',
+                message:
+                    error?.response?.data?.message ||
+                    'Unable to access customer portal',
+            }
+        }
+    }
+
+    const exitCustomerPortal = async () => {
+        try {
+            await endCustomerSession()
+            const originalPortal = localStorage.getItem(ORIGINAL_PORTAL_KEY)
+
+            if (originalPortal) {
+                window.location.href = originalPortal
+                localStorage.removeItem(ORIGINAL_PORTAL_KEY)
+            } else {
+                // If no original portal stored, just sign out
+                await signOut()
+            }
+        } catch (error) {
+            // On error, still try to redirect back
+            const originalPortal = localStorage.getItem(ORIGINAL_PORTAL_KEY)
+            if (originalPortal) {
+                window.location.href = originalPortal
+                localStorage.removeItem(ORIGINAL_PORTAL_KEY)
+            } else {
+                // Fall back to sign out
+                await signOut()
+            }
+        }
     }
 
     return (
@@ -148,6 +321,11 @@ function AuthProvider({ children }: AuthProviderProps) {
                 signUp,
                 signOut,
                 oAuthSignIn,
+                verifyMfa,
+                isCustomerPortal,
+                customerName,
+                accessCustomerPortal,
+                exitCustomerPortal,
             }}
         >
             {children}

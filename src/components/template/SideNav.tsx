@@ -16,6 +16,8 @@ import {
     LOGO_X_GUTTER,
 } from '@/constants/theme.constant'
 import type { Mode } from '@/@types/theme'
+import { useMemo, useEffect } from 'react'
+import type { NavigationTree } from '@/@types/navigation'
 
 type SideNavProps = {
     translationSetup?: boolean
@@ -50,7 +52,49 @@ const SideNav = ({
 
     const currentRouteKey = useRouteKeyStore((state) => state.currentRouteKey)
 
-    const userAuthority = useSessionUser((state) => state.user.authority)
+    const userAuthority = useSessionUser((state) => state.user.authority) || []
+
+    // Add debugging to check user authority and menu filtering
+    useEffect(() => {
+        console.log('SideNav - User authority:', userAuthority)
+        console.log('Navigation config:', navigationConfig)
+    }, [userAuthority])
+
+    // filter navigation tree by authority
+    const filteredNavigation: NavigationTree[] = useMemo(() => {
+        const filterTree = (nodes: NavigationTree[]): NavigationTree[] =>
+            nodes.reduce<NavigationTree[]>((acc, nav) => {
+                const hasAccess =
+                    !nav.authority?.length ||
+                    nav.authority.some((role) => userAuthority.includes(role))
+
+                // Debug log for item access
+                if (nav.key === 'tenantportal') {
+                    console.log(`Menu item '${nav.key}' access check:`, {
+                        hasAccess,
+                        authority: nav.authority,
+                        userAuthority,
+                        hasMatch: nav.authority?.some((role) =>
+                            userAuthority.includes(role),
+                        ),
+                    })
+                }
+
+                if (!hasAccess) return acc
+                const item = { ...nav }
+                if (item.subMenu?.length) {
+                    const sub = filterTree(item.subMenu)
+                    if (sub.length) item.subMenu = sub
+                    else item.subMenu = []
+                }
+                acc.push(item)
+                return acc
+            }, [])
+
+        const filtered = filterTree(navigationConfig)
+        console.log('Filtered navigation:', filtered)
+        return filtered
+    }, [navigationConfig, userAuthority])
 
     return (
         <div
@@ -83,11 +127,11 @@ const SideNav = ({
                 <ScrollBar style={{ height: '100%' }} direction={direction}>
                     <VerticalMenuContent
                         collapsed={sideNavCollapse}
-                        navigationTree={navigationConfig}
+                        navigationTree={filteredNavigation}
                         routeKey={currentRouteKey}
                         direction={direction}
                         translationSetup={translationSetup}
-                        userAuthority={userAuthority || []}
+                        userAuthority={userAuthority}
                     />
                 </ScrollBar>
             </div>

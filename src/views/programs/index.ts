@@ -1,0 +1,5 @@
+export { default as ProgramsListPage } from './ProgramsListPage'
+export { default as ProgramForm } from './ProgramForm'
+export { default as AssignCustomersToProgram } from './AssignCustomersToProgram'
+export { default as AssignShopsToProgram } from './AssignShopsToProgram'
+export { default as ProgramAssignmentsPage } from './ProgramAssignmentsPage'

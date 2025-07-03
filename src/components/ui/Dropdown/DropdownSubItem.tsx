@@ -51,7 +51,11 @@ const DropdownSubMenu = (props: DropdownSubItemProps) => {
         (!isNil(dropdown?.activeKey) && dropdown?.activeKey === eventKey)
 
     return (
-        <ul style={style} className="relative" {...rest}>
+        <div
+            style={style}
+            className="relative dropdown-submenu-wrapper"
+            {...rest}
+        >
             <MenuItem
                 ref={menuitemRef}
                 disabled={disabled}
@@ -65,7 +69,7 @@ const DropdownSubMenu = (props: DropdownSubItemProps) => {
                 <span>{children}</span>
                 {direction === 'rtl' ? <TbChevronLeft /> : <TbChevronRight />}
             </MenuItem>
-        </ul>
+        </div>
     )
 }
 

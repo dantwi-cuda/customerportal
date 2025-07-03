@@ -1,27 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path';
-import dynamicImport from 'vite-plugin-dynamic-import'
+import tsconfigPaths from 'vite-tsconfig-paths'
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), dynamicImport()],
-  assetsInclude: ['**/*.md'],
-  resolve: {
-    alias: {
-      '@': path.join(__dirname, 'src'),
-    },
-  },
+  plugins: [react(), tsconfigPaths()],
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5211', // Your backend API URL
         changeOrigin: true,
-        secure: false
+        // secure: false, // If your backend uses HTTPS with a self-signed certificate
+        // rewrite: (path) => path.replace(/^\/api/, '') // If your backend doesn't expect /api prefix
       }
     }
-  },
-  build: {
-    outDir: 'build'
   }
 })

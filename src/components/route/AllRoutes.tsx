@@ -1,6 +1,7 @@
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
 import AuthorityGuard from './AuthorityGuard'
+import RoleGuard from './RoleGuard'
 import AppRoute from './AppRoute'
 import PageContainer from '@/components/template/PageContainer'
 import { protectedRoutes, publicRoutes } from '@/configs/routes.config'
