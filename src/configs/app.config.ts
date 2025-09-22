@@ -22,14 +22,14 @@ const appConfig: AppConfig = {
     unAuthenticatedEntryPath: '/sign-in',
     locale: 'en',
     accessTokenPersistStrategy: 'cookies',
-    enableMock: true, // Enable mock temporarily to test frontend
+    enableMock: false, // Disabled - using real API endpoints
     activeNavTranslation: false,
     // Define default entry paths for each role
     rolePaths: {
         csAdmin: '/tenantportal/dashboard',
         csUser: '/admin/dashboard',
-        tenantAdmin: '/app/dashboard', 
-        endUser: '/app/dashboard'
+        tenantAdmin: '/app/tenant-dashboard', 
+        endUser: '/app/tenant-dashboard'
     }
 }
 

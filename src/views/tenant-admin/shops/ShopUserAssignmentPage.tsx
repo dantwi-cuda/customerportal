@@ -18,7 +18,7 @@ import * as ShopService from '@/services/ShopService'
 import UserService from '@/services/UserService'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { Shop, AssignUsersRequest } from '@/@types/shop'
-import type { User } from '@/@types/user'
+import type { UserDto } from '@/@types/user'
 import useAuth from '@/auth/useAuth'
 
 const ShopUserAssignmentPage = () => {
@@ -28,7 +28,7 @@ const ShopUserAssignmentPage = () => {
 
     // State management
     const [shop, setShop] = useState<Shop | null>(null)
-    const [users, setUsers] = useState<User[]>([])
+    const [users, setUsers] = useState<UserDto[]>([])
     const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
     const [loading, setLoading] = useState(false)
     const [usersLoading, setUsersLoading] = useState(false)
@@ -209,32 +209,39 @@ const ShopUserAssignmentPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="flex items-center gap-3">
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleBack}
+                        >
+                            Back to Shop
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">Assign Users</h4>
+                            <p className="text-gray-600 text-sm">
+                                Manage user assignments for: {shop.name}
+                            </p>
+                        </div>
+                    </div>
                     <Button
-                        size="sm"
-                        variant="plain"
-                        icon={<HiOutlineArrowLeft />}
-                        onClick={handleBack}
+                        variant="solid"
+                        icon={<HiOutlineSave />}
+                        onClick={handleSave}
+                        loading={saving}
+                        className="w-full sm:w-auto"
                     >
-                        Back to Shop
+                        Save Assignments
                     </Button>
-                    <h3 className="text-lg font-medium">
-                        Assign Users to: {shop.name}
-                    </h3>
                 </div>
-                <Button
-                    size="sm"
-                    variant="solid"
-                    icon={<HiOutlineSave />}
-                    onClick={handleSave}
-                    loading={saving}
-                >
-                    Save Assignments
-                </Button>
-            </div>
+            </Card>
 
+            {/* Content Card */}
             <Card>
                 {/* Search and Stats */}
                 <div className="p-4 border-b">

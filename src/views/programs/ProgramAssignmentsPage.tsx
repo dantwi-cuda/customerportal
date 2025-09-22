@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
     Card,
     Button,
@@ -9,6 +9,8 @@ import {
     Badge,
     Avatar,
     Tabs,
+    Pagination,
+    Tag,
 } from '@/components/ui'
 import { toast } from '@/components/ui'
 import { HiOutlineArrowLeft, HiOutlineTrash } from 'react-icons/hi'
@@ -35,6 +37,8 @@ const ProgramAssignmentsPage: React.FC = () => {
     >([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('customers')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize] = useState(10)
 
     const hasViewAccess = user?.authority?.some((role: string) =>
         [
@@ -60,6 +64,21 @@ const ProgramAssignmentsPage: React.FC = () => {
         return isPortalAdmin ? '/tenantportal/programs' : '/app/programs'
     }
 
+    // Paginated shop assignments
+    const paginatedShopAssignments = useMemo(() => {
+        if (!shopAssignments || shopAssignments.length === 0) {
+            return []
+        }
+        const startIndex = (currentPage - 1) * pageSize
+        const endIndex = startIndex + pageSize
+        console.log(
+            `Paginating ${shopAssignments.length} shop assignments, page ${currentPage}, showing items ${startIndex} to ${endIndex}`,
+        )
+        return shopAssignments.slice(startIndex, endIndex)
+    }, [shopAssignments, currentPage, pageSize])
+
+    const totalPages = Math.ceil((shopAssignments?.length || 0) / pageSize)
+
     useEffect(() => {
         if (programId && hasViewAccess) {
             loadData()
@@ -69,6 +88,7 @@ const ProgramAssignmentsPage: React.FC = () => {
     const loadData = async () => {
         try {
             setLoading(true)
+            setCurrentPage(1) // Reset pagination when loading new data
             const [programData, customerAssignmentsData, shopAssignmentsData] =
                 await Promise.all([
                     ProgramService.getProgram(parseInt(programId!)),
@@ -82,6 +102,7 @@ const ProgramAssignmentsPage: React.FC = () => {
             setProgram(programData)
             setCustomerAssignments(customerAssignmentsData)
             setShopAssignments(shopAssignmentsData)
+            console.log('Loaded shop assignments:', shopAssignmentsData)
         } catch (error) {
             console.error('Error loading data:', error)
             toast.push(
@@ -131,7 +152,11 @@ const ProgramAssignmentsPage: React.FC = () => {
         }
 
         try {
-            await ProgramService.removeProgramAssignment(assignmentId)
+            // Use the specific endpoint for removing shop assignments
+            await ProgramService.removeShopAssignment(
+                parseInt(programId!),
+                assignmentId,
+            )
             toast.push(
                 <Notification title="Success" type="success">
                     Shop assignment removed successfully
@@ -201,7 +226,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                     <div>
                         <h4 className="mb-1">Program Assignments</h4>
                         <p className="text-gray-600">
-                            View assignments for "{program.name}"
+                            View assignments for "{program.programName}"
                         </p>
                     </div>
                 </div>
@@ -213,7 +238,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                             <span className="text-sm text-gray-600">
                                 Program Name
                             </span>
-                            <p className="font-medium">{program.name}</p>
+                            <p className="font-medium">{program.programName}</p>
                         </div>
                         <div>
                             <span className="text-sm text-gray-600">Type</span>
@@ -239,7 +264,13 @@ const ProgramAssignmentsPage: React.FC = () => {
                 </div>
 
                 {/* Assignments Tabs */}
-                <Tabs value={activeTab} onChange={setActiveTab}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(value) => {
+                        setActiveTab(value)
+                        setCurrentPage(1) // Reset pagination when switching tabs
+                    }}
+                >
                     <Tabs.TabList>
                         {isPortalAdmin && (
                             <Tabs.TabNav value="customers">
@@ -295,9 +326,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                 customerAssignments.map(
                                                     (assignment) => (
                                                         <Table.Tr
-                                                            key={
-                                                                assignment.assignmentId
-                                                            }
+                                                            key={`customer-${assignment.assignmentId}`}
                                                         >
                                                             <Table.Td>
                                                                 <div className="flex items-center gap-3">
@@ -327,7 +356,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                             </Table.Td>
                                                             <Table.Td>
                                                                 <span className="text-gray-600">
-                                                                    {assignment.assignedByUserName ||
+                                                                    {assignment.assignedByUserId ||
                                                                         'System'}
                                                                 </span>
                                                             </Table.Td>
@@ -346,7 +375,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                                 </span>
                                                             </Table.Td>
                                                             <Table.Td>
-                                                                <Badge
+                                                                <Tag
                                                                     className={
                                                                         assignment.isActive
                                                                             ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
@@ -356,7 +385,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                                     {assignment.isActive
                                                                         ? 'Active'
                                                                         : 'Inactive'}
-                                                                </Badge>
+                                                                </Tag>
                                                             </Table.Td>
                                                             {hasDeleteAccess && (
                                                                 <Table.Td>
@@ -387,7 +416,13 @@ const ProgramAssignmentsPage: React.FC = () => {
 
                         <Tabs.TabContent value="shops">
                             <Card>
-                                <h5 className="mb-4">Shop Assignments</h5>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h5>Shop Assignments</h5>
+                                    <span className="text-sm text-gray-500">
+                                        Total: {shopAssignments?.length || 0} |
+                                        Page: {currentPage} of {totalPages}
+                                    </span>
+                                </div>
                                 <Table>
                                     <Table.THead>
                                         <Table.Tr>
@@ -407,7 +442,8 @@ const ProgramAssignmentsPage: React.FC = () => {
                                         </Table.Tr>
                                     </Table.THead>
                                     <Table.TBody>
-                                        {shopAssignments.length === 0 ? (
+                                        {paginatedShopAssignments.length ===
+                                        0 ? (
                                             <Table.Tr>
                                                 <Table.Td
                                                     colSpan={
@@ -419,12 +455,10 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                 </Table.Td>
                                             </Table.Tr>
                                         ) : (
-                                            shopAssignments.map(
-                                                (assignment) => (
+                                            paginatedShopAssignments.map(
+                                                (assignment, index) => (
                                                     <Table.Tr
-                                                        key={
-                                                            assignment.assignmentId
-                                                        }
+                                                        key={`shop-${assignment.shopId}-${assignment.programId}-${index}`}
                                                     >
                                                         <Table.Td>
                                                             <div className="flex items-center gap-3">
@@ -452,7 +486,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                         </Table.Td>
                                                         <Table.Td>
                                                             <span className="text-gray-600">
-                                                                {assignment.assignedByUserName ||
+                                                                {assignment.assignedByUserId ||
                                                                     'System'}
                                                             </span>
                                                         </Table.Td>
@@ -473,7 +507,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                             </span>
                                                         </Table.Td>
                                                         <Table.Td>
-                                                            <Badge
+                                                            <Tag
                                                                 className={
                                                                     assignment.isActive
                                                                         ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
@@ -483,7 +517,7 @@ const ProgramAssignmentsPage: React.FC = () => {
                                                                 {assignment.isActive
                                                                     ? 'Active'
                                                                     : 'Inactive'}
-                                                            </Badge>
+                                                            </Tag>
                                                         </Table.Td>
                                                         {hasDeleteAccess && (
                                                             <Table.Td>
@@ -508,6 +542,22 @@ const ProgramAssignmentsPage: React.FC = () => {
                                         )}
                                     </Table.TBody>
                                 </Table>
+
+                                {/* Pagination */}
+                                {totalPages > 1 &&
+                                    shopAssignments &&
+                                    shopAssignments.length > 0 && (
+                                        <div className="flex justify-center mt-6">
+                                            <Pagination
+                                                total={shopAssignments.length}
+                                                pageSize={pageSize}
+                                                currentPage={currentPage}
+                                                onChange={(page) =>
+                                                    setCurrentPage(page)
+                                                }
+                                            />
+                                        </div>
+                                    )}
                             </Card>
                         </Tabs.TabContent>
                     </div>

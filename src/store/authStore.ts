@@ -1,6 +1,6 @@
 import cookiesStorage from '@/utils/cookiesStorage'
 import appConfig from '@/configs/app.config'
-import { TOKEN_NAME_IN_STORAGE } from '@/constants/api.constant'
+import { TOKEN_NAME_IN_STORAGE, REFRESH_TOKEN_NAME_IN_STORAGE } from '@/constants/api.constant'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { User } from '@/@types/auth'
@@ -73,8 +73,20 @@ export const useToken = () => {
         storage.setItem(TOKEN_NAME_IN_STORAGE, token)
     }
 
+    const setRefreshToken = (refreshToken: string) => {
+        storage.setItem(REFRESH_TOKEN_NAME_IN_STORAGE, refreshToken)
+    }
+
+    const clearTokens = () => {
+        storage.removeItem(TOKEN_NAME_IN_STORAGE)
+        storage.removeItem(REFRESH_TOKEN_NAME_IN_STORAGE)
+    }
+
     return {
         setToken,
+        setRefreshToken,
+        clearTokens,
         token: storage.getItem(TOKEN_NAME_IN_STORAGE),
+        refreshToken: storage.getItem(REFRESH_TOKEN_NAME_IN_STORAGE),
     }
 }

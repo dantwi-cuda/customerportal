@@ -211,7 +211,9 @@ const ShopPropertiesListPage = () => {
 
     const loadShops = async () => {
         try {
-            const shopsData = await ShopService.getShopsList()
+            const shopsResponse = await ShopService.getShopsList()
+            // Extract shops array from the paginated response
+            const shopsData = shopsResponse?.shops || []
             setShops(shopsData.filter((shop) => shop.isActive))
         } catch (error) {
             console.error('Error loading shops:', error)
@@ -460,19 +462,30 @@ const ShopPropertiesListPage = () => {
     }
 
     return (
-        <div className="p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Shop Properties
-                </h1>
-                <p className="text-gray-600">
-                    Manage shop properties filtered by shop and date
-                </p>
-            </div>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Filters Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h4 className="mb-1">Shop Properties</h4>
+                        <p className="text-gray-600">
+                            Manage shop properties filtered by shop and date
+                        </p>
+                    </div>
+                    {hasCreateAccess && selectedShop && (
+                        <Button
+                            variant="solid"
+                            onClick={() => setShowCreateDialog(true)}
+                            icon={<HiOutlinePlus />}
+                            className="w-full sm:w-auto"
+                        >
+                            Add Property
+                        </Button>
+                    )}
+                </div>
 
-            {/* Filters */}
-            <Card className="mb-6 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     {/* Shop Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -557,22 +570,11 @@ const ShopPropertiesListPage = () => {
                         />
                     </div>
                 </div>
-            </Card>
 
-            {selectedShop && (
-                <Card>
-                    {/* Actions Bar */}
-                    <div className="flex justify-between items-center p-4 border-b">
-                        <div className="flex items-center space-x-4">
-                            {hasCreateAccess && (
-                                <Button
-                                    variant="solid"
-                                    onClick={() => setShowCreateDialog(true)}
-                                    icon={<HiOutlinePlus />}
-                                >
-                                    Add Property
-                                </Button>
-                            )}
+                {/* Actions Bar */}
+                {selectedShop && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
                             {hasChanges && (
                                 <>
                                     <Button
@@ -581,6 +583,7 @@ const ShopPropertiesListPage = () => {
                                         onClick={handleBulkSave}
                                         loading={isSaving}
                                         icon={<HiOutlineCheck />}
+                                        className="w-full sm:w-auto"
                                     >
                                         Save Changes (
                                         {Object.keys(editedValues).length})
@@ -589,6 +592,7 @@ const ShopPropertiesListPage = () => {
                                         variant="plain"
                                         onClick={handleResetChanges}
                                         icon={<HiOutlineX />}
+                                        className="w-full sm:w-auto"
                                     >
                                         Reset
                                     </Button>
@@ -599,7 +603,12 @@ const ShopPropertiesListPage = () => {
                             {totalItems} properties found
                         </div>
                     </div>
+                )}
+            </Card>
 
+            {/* Content Card */}
+            {selectedShop && (
+                <Card>
                     {/* Table */}
                     <div className="overflow-x-auto">
                         {loading ? (

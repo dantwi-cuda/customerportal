@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, Notification, toast } from '@/components/ui'
 import { HiUpload, HiEye } from 'react-icons/hi'
 import BulkUploadService from '@/services/BulkUploadService'
-import type { BulkUploadJob } from '@/@types/parts'
+import type { BulkUploadJob, BulkUploadResponse } from '@/@types/parts'
 
 interface BulkUploadProps {
     type: 'masterparts' | 'supplierparts'
@@ -47,23 +47,42 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
         onUploadStart?.()
 
         try {
-            let job: BulkUploadJob
+            let uploadResponse: BulkUploadResponse
 
             if (type === 'masterparts') {
-                job = await BulkUploadService.bulkUploadMasterParts(file)
+                uploadResponse =
+                    await BulkUploadService.bulkUploadMasterParts(file)
             } else {
-                job = await BulkUploadService.bulkUploadSupplierParts(file)
+                uploadResponse =
+                    await BulkUploadService.bulkUploadSupplierParts(file)
             }
 
-            setUploadJob(job)
-            toast.push(
-                <Notification title="Success" type="success" duration={3000}>
-                    File uploaded successfully. Processing started.
-                </Notification>,
-            )
+            if (uploadResponse.jobID) {
+                toast.push(
+                    <Notification
+                        title="Success"
+                        type="success"
+                        duration={3000}
+                    >
+                        {uploadResponse.message ||
+                            'File uploaded successfully. Processing started.'}
+                    </Notification>,
+                )
 
-            // Start polling for job status
-            pollJobStatus(job.jobId)
+                // Start polling for job status using the jobID from the response
+                pollJobStatus(uploadResponse.jobID)
+            } else {
+                console.error(
+                    'No jobID received from upload response:',
+                    uploadResponse,
+                )
+                toast.push(
+                    <Notification title="Error" type="danger" duration={3000}>
+                        Upload started but job ID is missing. Please refresh the
+                        page to check status.
+                    </Notification>,
+                )
+            }
         } catch (error) {
             console.error('Failed to upload file:', error)
             toast.push(
@@ -80,7 +99,12 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
         }
     }
 
-    const pollJobStatus = async (jobId: string) => {
+    const pollJobStatus = async (jobId: string | number) => {
+        if (!jobId) {
+            console.error('Cannot poll job status: jobId is undefined')
+            return
+        }
+
         const maxAttempts = 60 // Poll for up to 5 minutes
         let attempts = 0
 
@@ -89,8 +113,8 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                 const job = await BulkUploadService.getJob(jobId)
                 setUploadJob(job)
 
-                if (job.status === 'completed' || job.status === 'failed') {
-                    if (job.status === 'completed') {
+                if (job.status === 'Completed' || job.status === 'Failed') {
+                    if (job.status === 'Completed') {
                         toast.push(
                             <Notification
                                 title="Success"
@@ -98,7 +122,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                                 duration={5000}
                             >
                                 Upload completed successfully! Processed{' '}
-                                {job.processedRecords} records.
+                                {job.successfulRecords || 0} records.
                             </Notification>,
                         )
                         onUploadComplete?.()
@@ -130,13 +154,20 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
     }
 
     const viewJobDetails = async () => {
-        if (!uploadJob) return
+        if (!uploadJob || !uploadJob.jobID) {
+            toast.push(
+                <Notification title="Error" type="danger" duration={3000}>
+                    No job ID available to fetch details.
+                </Notification>,
+            )
+            return
+        }
 
         try {
-            const job = await BulkUploadService.getJob(uploadJob.jobId)
+            const job = await BulkUploadService.getJob(uploadJob.jobID)
             const errors =
-                job.errorRecords > 0
-                    ? await BulkUploadService.getJobErrors(uploadJob.jobId)
+                job.failedRecords && job.failedRecords > 0
+                    ? await BulkUploadService.getJobErrors(uploadJob.jobID)
                     : []
 
             // You can implement a modal or navigate to a details page here
@@ -161,14 +192,16 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'completed':
+            case 'Completed':
                 return 'text-green-600 bg-green-100'
-            case 'failed':
+            case 'Failed':
                 return 'text-red-600 bg-red-100'
-            case 'processing':
+            case 'Processing':
                 return 'text-blue-600 bg-blue-100'
-            default:
+            case 'Pending':
                 return 'text-yellow-600 bg-yellow-100'
+            default:
+                return 'text-gray-600 bg-gray-100'
         }
     }
 
@@ -219,9 +252,11 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                                     Upload Status:
                                 </span>
                                 <span
-                                    className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(uploadJob.status)}`}
+                                    className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(uploadJob.status || 'Pending')}`}
                                 >
-                                    {uploadJob.status.toUpperCase()}
+                                    {(
+                                        uploadJob.status || 'Pending'
+                                    ).toUpperCase()}
                                 </span>
                             </div>
 
@@ -231,7 +266,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                                         Total Records:
                                     </span>
                                     <div className="font-medium">
-                                        {uploadJob.totalRecords}
+                                        {uploadJob.totalRecords || 0}
                                     </div>
                                 </div>
                                 <div>
@@ -239,7 +274,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                                         Processed:
                                     </span>
                                     <div className="font-medium">
-                                        {uploadJob.processedRecords}
+                                        {uploadJob.processedRecords || 0}
                                     </div>
                                 </div>
                                 <div>
@@ -247,19 +282,19 @@ const BulkUpload: React.FC<BulkUploadProps> = ({
                                         Errors:
                                     </span>
                                     <div className="font-medium text-red-600">
-                                        {uploadJob.errorRecords}
+                                        {uploadJob.failedRecords || 0}
                                     </div>
                                 </div>
                                 <div>
                                     <span className="text-gray-600">File:</span>
                                     <div className="font-medium truncate">
-                                        {uploadJob.fileName}
+                                        {uploadJob.fileName || 'Unknown'}
                                     </div>
                                 </div>
                             </div>
 
-                            {(uploadJob.status === 'completed' ||
-                                uploadJob.status === 'failed') && (
+                            {(uploadJob.status === 'Completed' ||
+                                uploadJob.status === 'Failed') && (
                                 <div className="flex justify-end">
                                     <Button
                                         variant="plain"

@@ -32,7 +32,7 @@ const ReportEditPage = () => {
     // State management
     const [report, setReport] = useState<Partial<Report>>({
         name: '',
-        description: '',
+        tenantDescription: '',
         reportCategoryId: 0,
     })
     const [categories, setCategories] = useState<ReportCategory[]>([])
@@ -95,7 +95,27 @@ const ReportEditPage = () => {
 
         setReport((prev) => ({
             ...prev,
-            reportCategoryId: parseInt(newValue.value, 10),
+            tenantReportCategoryId: parseInt(newValue.value, 10),
+        }))
+    }
+
+    const handleStatusChange = (newValue: SingleValue<SelectOption>) => {
+        if (!newValue) return
+
+        setReport((prev) => ({
+            ...prev,
+            isTenantEnabled: newValue.value === 'true',
+        }))
+    }
+
+    const handleApprovalStatusChange = (
+        newValue: SingleValue<SelectOption>,
+    ) => {
+        if (!newValue) return
+
+        setReport((prev) => ({
+            ...prev,
+            isTenantApproved: newValue.value === 'true',
         }))
     }
 
@@ -111,15 +131,23 @@ const ReportEditPage = () => {
 
         setSaving(true)
         try {
+            console.log('=== REPORT SAVE PAYLOAD ===')
+            console.log('Report ID:', id)
+            console.log('Is New Report:', isNewReport)
+            console.log('Payload being sent:', JSON.stringify(report, null, 2))
+            console.log('==========================')
+
             if (isNewReport) {
-                await ReportService.createReport(report)
+                const result = await ReportService.createReport(report)
+                console.log('Create Report Response:', result)
                 toast.push(
                     <Notification type="success" title="Report created">
                         Report has been created successfully.
                     </Notification>,
                 )
             } else if (id) {
-                await ReportService.updateReport(id, report)
+                const result = await ReportService.updateReport(id, report)
+                console.log('Update Report Response:', result)
                 toast.push(
                     <Notification type="success" title="Report updated">
                         Report has been updated successfully.
@@ -129,6 +157,10 @@ const ReportEditPage = () => {
             navigate('/tenantportal/tenant/reports')
         } catch (error) {
             console.error('Error saving report:', error)
+            console.error(
+                'Failed payload was:',
+                JSON.stringify(report, null, 2),
+            )
             toast.push(
                 <Notification type="danger" title="Error saving report">
                     {error instanceof Error
@@ -153,7 +185,7 @@ const ReportEditPage = () => {
 
     // Find selected category
     const selectedCategory = categoryOptions.find(
-        (option) => option.value === report.reportCategoryId?.toString(),
+        (option) => option.value === report.tenantReportCategoryId?.toString(),
     )
 
     if (!isTenantAdmin) {
@@ -170,24 +202,46 @@ const ReportEditPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex items-center">
-                <Button
-                    size="sm"
-                    icon={<HiOutlineArrowLeft />}
-                    onClick={handleCancel}
-                    variant="plain"
-                >
-                    Back to Reports
-                </Button>
-            </div>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleCancel}
+                        >
+                            Back to Reports
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">
+                                {isNewReport ? 'Create Report' : 'Edit Report'}
+                            </h4>
+                            <p className="text-gray-600 text-sm">
+                                {isNewReport
+                                    ? 'Set up a new report in the system'
+                                    : 'Update report information and settings'}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiOutlineSave />}
+                        onClick={handleSave}
+                        loading={saving}
+                        disabled={!report.name?.trim()}
+                        className="w-full sm:w-auto"
+                    >
+                        {isNewReport ? 'Create Report' : 'Save Changes'}
+                    </Button>
+                </div>
+            </Card>
 
+            {/* Content Card */}
             <Card>
                 <div className="p-4">
-                    <h4 className="mb-4">
-                        {isNewReport ? 'Create Report' : 'Edit Report'}
-                    </h4>
-
                     {loading ? (
                         <div className="flex justify-center items-center py-8">
                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -209,8 +263,8 @@ const ReportEditPage = () => {
 
                             <FormItem label="Description">
                                 <Textarea
-                                    name="description"
-                                    value={report.description || ''}
+                                    name="tenantDescription"
+                                    value={report.tenantDescription || ''}
                                     onChange={handleInputChange}
                                     placeholder="Enter report description"
                                     className="h-24"
@@ -228,13 +282,6 @@ const ReportEditPage = () => {
 
                             {!isNewReport && (
                                 <>
-                                    <FormItem label="Original Name">
-                                        <Input
-                                            value={report.originalName || ''}
-                                            disabled
-                                        />
-                                    </FormItem>
-
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <FormItem label="Workspace">
                                             <Input
@@ -246,39 +293,75 @@ const ReportEditPage = () => {
                                         </FormItem>
 
                                         <FormItem label="Status">
-                                            <div className="flex items-center h-10 px-4 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-                                                <span
-                                                    className={`inline-block w-2 h-2 rounded-full mr-2 ${report.isEnabled ? 'bg-emerald-500' : 'bg-red-500'}`}
-                                                ></span>
-                                                <span>
-                                                    {report.isEnabled
-                                                        ? 'Enabled'
-                                                        : 'Disabled'}
-                                                </span>
-                                            </div>
+                                            <Select
+                                                options={[
+                                                    {
+                                                        value: 'true',
+                                                        label: 'Enabled',
+                                                    },
+                                                    {
+                                                        value: 'false',
+                                                        label: 'Disabled',
+                                                    },
+                                                ]}
+                                                value={
+                                                    report.isTenantEnabled !==
+                                                    undefined
+                                                        ? {
+                                                              value: String(
+                                                                  report.isTenantEnabled,
+                                                              ),
+                                                              label: report.isTenantEnabled
+                                                                  ? 'Enabled'
+                                                                  : 'Disabled',
+                                                          }
+                                                        : null
+                                                }
+                                                onChange={handleStatusChange}
+                                                placeholder="Select status"
+                                            />
                                         </FormItem>
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <FormItem label="Approval Status">
-                                            <div className="flex items-center h-10 px-4 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-                                                <span
-                                                    className={`inline-block w-2 h-2 rounded-full mr-2 ${report.isApproved ? 'bg-emerald-500' : 'bg-yellow-500'}`}
-                                                ></span>
-                                                <span>
-                                                    {report.isApproved
-                                                        ? 'Approved'
-                                                        : 'Pending Approval'}
-                                                </span>
-                                            </div>
+                                            <Select
+                                                options={[
+                                                    {
+                                                        value: 'true',
+                                                        label: 'Approved',
+                                                    },
+                                                    {
+                                                        value: 'false',
+                                                        label: 'Pending Approval',
+                                                    },
+                                                ]}
+                                                value={
+                                                    report.isTenantApproved !==
+                                                    undefined
+                                                        ? {
+                                                              value: String(
+                                                                  report.isTenantApproved,
+                                                              ),
+                                                              label: report.isTenantApproved
+                                                                  ? 'Approved'
+                                                                  : 'Pending Approval',
+                                                          }
+                                                        : null
+                                                }
+                                                onChange={
+                                                    handleApprovalStatusChange
+                                                }
+                                                placeholder="Select approval status"
+                                            />
                                         </FormItem>
 
                                         <FormItem label="Last Updated">
                                             <Input
                                                 value={
-                                                    report.lastUpdated
+                                                    report.updatedAt
                                                         ? new Date(
-                                                              report.lastUpdated,
+                                                              report.updatedAt,
                                                           ).toLocaleString()
                                                         : 'N/A'
                                                 }
@@ -288,25 +371,6 @@ const ReportEditPage = () => {
                                     </div>
                                 </>
                             )}
-
-                            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
-                                <Button
-                                    variant="default"
-                                    onClick={handleCancel}
-                                    className="w-full sm:w-auto order-2 sm:order-1"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="solid"
-                                    icon={<HiOutlineSave />}
-                                    onClick={handleSave}
-                                    loading={saving}
-                                    className="w-full sm:w-auto order-1 sm:order-2"
-                                >
-                                    {isNewReport ? 'Create' : 'Save'}
-                                </Button>
-                            </div>
                         </FormContainer>
                     )}
                 </div>

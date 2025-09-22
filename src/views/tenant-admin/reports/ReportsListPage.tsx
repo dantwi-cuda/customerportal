@@ -22,12 +22,20 @@ import {
     HiOutlineAdjustments,
     HiOutlineSwitchVertical,
     HiOutlineExternalLink,
+    HiOutlineX,
 } from 'react-icons/hi'
 import EllipsisButton from '@/components/shared/EllipsisButton'
 import * as ReportService from '@/services/ReportService'
 import { useNavigate } from 'react-router-dom'
-import type { Report, ReportCategory } from '@/@types/report'
+import type { Report, ReportCategory, ReportWorkspace } from '@/@types/report'
 import useAuth from '@/auth/useAuth'
+import { usePermissionStore } from '@/store/permissionStore'
+import {
+    REPORT_ALL,
+    REPORT_READ,
+    REPORT_LAUNCH,
+} from '@/constants/report-permissions.constant'
+import { TENANT_ADMIN } from '@/constants/roles.constant'
 import type { SingleValue } from 'react-select'
 
 // Types for Select component
@@ -39,13 +47,41 @@ interface SelectOption {
 const ReportsListPage = () => {
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { hasPermission } = usePermissionStore()
+
+    // Permission checks
+    const canLaunchReports =
+        user?.authority?.includes(TENANT_ADMIN) || // Tenant Admins can always launch reports
+        hasPermission(REPORT_READ) ||
+        hasPermission(REPORT_ALL) ||
+        hasPermission(REPORT_LAUNCH)
+
+    // Debug: Log permission check results
+    console.log('Launch permission check:', {
+        isTenantAdmin: user?.authority?.includes(TENANT_ADMIN),
+        hasReportRead: hasPermission(REPORT_READ),
+        hasReportAll: hasPermission(REPORT_ALL),
+        hasReportLaunch: hasPermission(REPORT_LAUNCH),
+        canLaunchReports,
+    })
 
     // State management
     const [reports, setReports] = useState<Report[]>([])
     const [categories, setCategories] = useState<ReportCategory[]>([])
+    const [workspaces, setWorkspaces] = useState<ReportWorkspace[]>([])
     const [loading, setLoading] = useState(false)
     const [searchText, setSearchText] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
+    const [selectedWorkspace, setSelectedWorkspace] = useState<string>('all')
+    const [selectedReports, setSelectedReports] = useState<Set<string>>(
+        new Set(),
+    )
+    const [bulkOperationLoading, setBulkOperationLoading] = useState(false)
+
+    // Loading states for individual reports
+    const [updatingReports, setUpdatingReports] = useState<Set<string>>(
+        new Set(),
+    )
 
     // Sorting state
     const [sortField, setSortField] = useState<string>('name')
@@ -58,29 +94,93 @@ const ReportsListPage = () => {
     // Tenant admin check: User must have a tenantId to manage reports
     const isTenantAdmin = !!user?.tenantId
 
+    console.log('Auth state:', { user, isTenantAdmin })
+
     useEffect(() => {
         if (isTenantAdmin) {
-            fetchReports()
             fetchCategories()
+            fetchWorkspaces()
+            // Also fetch reports immediately when component mounts
+            fetchReports()
         }
     }, [user])
 
-    // Reset to first page when search text or selected category changes
+    // Add a debug effect to test API connectivity
+    useEffect(() => {
+        if (isTenantAdmin) {
+            // Test API connectivity
+            console.log('Testing API connectivity...')
+            fetch('/api/Report?Category=')
+                .then((response) => {
+                    console.log(
+                        'Direct fetch response status:',
+                        response.status,
+                    )
+                    return response.json()
+                })
+                .then((data) => {
+                    console.log('Direct fetch data:', data)
+                    console.log('Direct fetch data length:', data?.length)
+                })
+                .catch((error) => {
+                    console.error('Direct fetch error:', error)
+                })
+        }
+    }, [isTenantAdmin])
+
+    // Only fetch reports when the component mounts or user changes
+    useEffect(() => {
+        if (isTenantAdmin) {
+            fetchReports()
+        }
+    }, [isTenantAdmin])
+
+    // Reset to first page when selected category changes
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchText, selectedCategory])
+        setSelectedReports(new Set()) // Clear selections when category changes
+    }, [selectedCategory])
+
+    // Reset to first page when selected workspace changes
+    useEffect(() => {
+        setCurrentPage(1)
+        setSelectedReports(new Set()) // Clear selections when workspace changes
+    }, [selectedWorkspace])
+
+    // Reset to first page when search text changes
+    useEffect(() => {
+        setCurrentPage(1)
+        setSelectedReports(new Set()) // Clear selections when search changes
+    }, [searchText])
 
     const fetchReports = async () => {
         setLoading(true)
         try {
-            const data = await ReportService.getReportsList({
-                categoryId:
-                    selectedCategory !== 'all' ? selectedCategory : undefined,
-                search: searchText || undefined,
+            console.log(
+                'Fetching all reports (client-side filtering will be applied)...',
+            )
+
+            // Fetch all reports - we'll do filtering client-side for better UX
+            const data = await ReportService.getReportsList({ category: '' })
+            console.log('API response received:', data)
+            console.log('Number of reports received:', data?.length || 0)
+
+            // Debug: Log workspace info for each report
+            data?.forEach((report) => {
+                console.log(
+                    `Report: ${report.name}, WorkspaceId: ${report.workspaceId}, WorkspaceName: ${report.workspaceName}`,
+                )
             })
-            setReports(data)
+
+            setReports(data || [])
         } catch (error) {
             console.error('Error fetching reports:', error)
+            if (error && typeof error === 'object' && 'response' in error) {
+                console.error(
+                    'Error details:',
+                    (error as any).response?.data || (error as any).message,
+                )
+            }
             toast.push(
                 <Notification type="danger" title="Error fetching reports">
                     {error instanceof Error
@@ -95,10 +195,35 @@ const ReportsListPage = () => {
 
     const fetchCategories = async () => {
         try {
+            console.log('Fetching categories...')
             const data = await ReportService.getCategories()
-            setCategories(data)
+            console.log('Categories received:', data)
+            setCategories(data || [])
         } catch (error) {
             console.error('Error fetching categories:', error)
+            // Don't show toast for categories error as it's not critical
+            // The reports can still be displayed without categories
+            setCategories([])
+        }
+    }
+
+    const fetchWorkspaces = async () => {
+        try {
+            console.log('Fetching workspaces...')
+            const data = await ReportService.getWorkspaces()
+            console.log('Workspaces received:', data)
+
+            // Debug: Log each workspace
+            data?.forEach((workspace) => {
+                console.log(`Workspace: ${workspace.name}, ID: ${workspace.id}`)
+            })
+
+            setWorkspaces(data || [])
+        } catch (error) {
+            console.error('Error fetching workspaces:', error)
+            // Don't show toast for workspaces error as it's not critical
+            // The reports can still be displayed without workspaces
+            setWorkspaces([])
         }
     }
 
@@ -137,31 +262,53 @@ const ReportsListPage = () => {
         navigate(`/tenantportal/tenant/reports/${report.id}/assignments`)
     }
 
-    const handleLaunchReport = (report: Report) => {
-        navigate(`/tenantportal/tenant/reports/${report.id}/view`)
-    }
-
-    const handleToggleApproval = async (report: Report) => {
+    const handleLaunchReport = async (report: Report) => {
         try {
-            const updatedReport = {
-                ...report,
-                isApproved: !report.isApproved,
+            // Check if the report has basic requirements for embedding
+            if (!report.powerBiReportId) {
+                toast.push(
+                    <Notification type="warning" title="Cannot launch report">
+                        This report does not have a valid Power BI report ID.
+                    </Notification>,
+                )
+                return
             }
-            await ReportService.updateReport(report.id, updatedReport)
-            await fetchReports()
+
+            console.log('Launching report:', report.name, 'ID:', report.id)
+
+            // Show loading notification
             toast.push(
-                <Notification
-                    type="success"
-                    title={`Report ${updatedReport.isApproved ? 'approved' : 'unapproved'}`}
-                >
-                    {report.name} has been{' '}
-                    {updatedReport.isApproved ? 'approved' : 'unapproved'}
+                <Notification type="info" title="Launching report">
+                    Preparing report for viewing...
                 </Notification>,
             )
+
+            try {
+                // Fetch embed config to verify report is accessible
+                const embedConfig = await ReportService.getReportEmbedToken(
+                    report.id,
+                )
+                console.log('Embed config received:', {
+                    reportId: embedConfig.reportId,
+                    hasToken: !!embedConfig.embedToken,
+                    embedUrl: embedConfig.embedUrl,
+                    expiresInMinutes: embedConfig.expiresInMinutes,
+                })
+
+                // Navigate to the report viewer page
+                navigate(`/tenantportal/tenant/reports/${report.id}/view`)
+            } catch (embedError) {
+                console.error('Error getting embed config:', embedError)
+                toast.push(
+                    <Notification type="danger" title="Cannot launch report">
+                        Unable to prepare report for viewing. Please try again.
+                    </Notification>,
+                )
+            }
         } catch (error) {
-            console.error('Error updating report:', error)
+            console.error('Error launching report:', error)
             toast.push(
-                <Notification type="danger" title="Error updating report">
+                <Notification type="danger" title="Error launching report">
                     {error instanceof Error
                         ? error.message
                         : 'An unknown error occurred'}
@@ -170,25 +317,50 @@ const ReportsListPage = () => {
         }
     }
 
-    const handleToggleEnabled = async (report: Report) => {
+    const handleToggleApproval = async (report: Report) => {
+        if (updatingReports.has(report.id)) return // Prevent multiple simultaneous updates
+
+        setUpdatingReports((prev) => new Set(prev).add(report.id))
         try {
-            const updatedReport = {
-                ...report,
-                isEnabled: !report.isEnabled,
+            const isCurrentlyApproved =
+                report.isTenantApproved ?? report.status === 'Approved'
+
+            console.log('Toggling report approval - Original report:', report)
+            console.log('Current approval status:', isCurrentlyApproved)
+
+            // Convert report ID to number for the new bulk API
+            const reportIdAsNumber = parseInt(report.id, 10)
+            if (isNaN(reportIdAsNumber)) {
+                throw new Error(`Invalid report ID: ${report.id}`)
             }
-            await ReportService.updateReport(report.id, updatedReport)
+
+            // Use the new bulk approve endpoint for both approve and unapprove
+            const newApprovalStatus = !isCurrentlyApproved
+            console.log(
+                `${newApprovalStatus ? 'Approving' : 'Unapproving'} report using bulk approve API`,
+            )
+            console.log('Payload:', {
+                reportIds: [reportIdAsNumber],
+                isApproved: newApprovalStatus,
+            })
+
+            await ReportService.bulkApproveReportsNew(
+                [reportIdAsNumber],
+                newApprovalStatus,
+            )
+
             await fetchReports()
             toast.push(
                 <Notification
                     type="success"
-                    title={`Report ${updatedReport.isEnabled ? 'enabled' : 'disabled'}`}
+                    title={`Report ${newApprovalStatus ? 'approved' : 'unapproved'}`}
                 >
                     {report.name} has been{' '}
-                    {updatedReport.isEnabled ? 'enabled' : 'disabled'}
+                    {newApprovalStatus ? 'approved' : 'unapproved'}
                 </Notification>,
             )
         } catch (error) {
-            console.error('Error updating report:', error)
+            console.error('Error updating report approval:', error)
             toast.push(
                 <Notification type="danger" title="Error updating report">
                     {error instanceof Error
@@ -196,13 +368,155 @@ const ReportsListPage = () => {
                         : 'An unknown error occurred'}
                 </Notification>,
             )
+        } finally {
+            setUpdatingReports((prev) => {
+                const newSet = new Set(prev)
+                newSet.delete(report.id)
+                return newSet
+            })
+        }
+    }
+
+    const handleToggleEnabled = async (report: Report) => {
+        if (updatingReports.has(report.id)) return // Prevent multiple simultaneous updates
+
+        setUpdatingReports((prev) => new Set(prev).add(report.id))
+        try {
+            const isCurrentlyEnabled = report.isTenantEnabled ?? true
+
+            console.log(
+                'Toggling report enabled status - Original report:',
+                report,
+            )
+            console.log('Current enabled status:', isCurrentlyEnabled)
+
+            // Convert report ID to integer for the API
+            const reportIdAsInt = parseInt(report.id, 10)
+            if (isNaN(reportIdAsInt)) {
+                throw new Error(`Invalid report ID: ${report.id}`)
+            }
+
+            const payload = {
+                reportIds: [reportIdAsInt],
+                isEnabled: !isCurrentlyEnabled,
+            }
+
+            console.log('Using bulk set-status API with payload:', payload)
+
+            // Use the bulk set-status API with integer IDs
+            await ReportService.bulkSetReportStatus(
+                [reportIdAsInt],
+                !isCurrentlyEnabled,
+            )
+            await fetchReports()
+            toast.push(
+                <Notification
+                    type="success"
+                    title={`Report ${!isCurrentlyEnabled ? 'enabled' : 'disabled'}`}
+                >
+                    {report.name} has been{' '}
+                    {!isCurrentlyEnabled ? 'enabled' : 'disabled'}
+                </Notification>,
+            )
+        } catch (error) {
+            console.error('Error updating report enabled status:', error)
+            toast.push(
+                <Notification type="danger" title="Error updating report">
+                    {error instanceof Error
+                        ? error.message
+                        : 'An unknown error occurred'}
+                </Notification>,
+            )
+        } finally {
+            setUpdatingReports((prev) => {
+                const newSet = new Set(prev)
+                newSet.delete(report.id)
+                return newSet
+            })
         }
     }
 
     // Filter and sort reports
     const filteredAndSortedReports = useMemo(() => {
-        // First filter by search text
+        console.log('Filtering reports:', {
+            totalReports: reports.length,
+            selectedWorkspace,
+            selectedCategory,
+            searchText,
+        })
+
+        // First filter by search text across all visible table fields
         let filtered = reports
+
+        // Apply workspace filter first (client-side filtering to ensure it works)
+        if (selectedWorkspace !== 'all') {
+            const beforeWorkspaceFilter = filtered.length
+            filtered = filtered.filter((report) => {
+                const matches =
+                    report.workspaceId?.toString() === selectedWorkspace
+                if (!matches) {
+                    console.log(
+                        'Filtering out report:',
+                        report.name,
+                        'workspaceId:',
+                        report.workspaceId,
+                        'selectedWorkspace:',
+                        selectedWorkspace,
+                    )
+                }
+                return matches
+            })
+            console.log(
+                `Workspace filter: ${beforeWorkspaceFilter} -> ${filtered.length}`,
+            )
+        }
+
+        // Apply category filter (client-side filtering to ensure it works)
+        if (selectedCategory !== 'all') {
+            const selectedCategoryName = categories.find(
+                (cat) => cat.id.toString() === selectedCategory,
+            )?.name
+            if (selectedCategoryName) {
+                const beforeCategoryFilter = filtered.length
+                filtered = filtered.filter((report) => {
+                    return report.categoryName === selectedCategoryName
+                })
+                console.log(
+                    `Category filter: ${beforeCategoryFilter} -> ${filtered.length}`,
+                )
+            }
+        }
+
+        // Apply search text filter
+        if (searchText.trim()) {
+            const searchLower = searchText.toLowerCase()
+            filtered = filtered.filter((report) => {
+                // Search in: name, tenantDescription, categoryName, workspaceName, approval status (approved/pending), enabled (enabled/disabled)
+                const name = report.name?.toLowerCase() || ''
+                const description = (
+                    report.tenantDescription ||
+                    report.description ||
+                    ''
+                ).toLowerCase()
+                const category = report.categoryName?.toLowerCase() || ''
+                const workspace = report.workspaceName?.toLowerCase() || ''
+                const approvalStatus =
+                    (report.isTenantApproved ?? report.status === 'Approved')
+                        ? 'approved'
+                        : 'pending'
+                const enabled =
+                    (report.isTenantEnabled ?? true) ? 'enabled' : 'disabled'
+
+                return (
+                    name.includes(searchLower) ||
+                    description.includes(searchLower) ||
+                    category.includes(searchLower) ||
+                    workspace.includes(searchLower) ||
+                    approvalStatus.includes(searchLower) ||
+                    enabled.includes(searchLower)
+                )
+            })
+        }
 
         // Apply sorting
         const sorted = [...filtered].sort((a, b) => {
@@ -216,12 +530,30 @@ const ReportsListPage = () => {
                 } else {
                     return valueB.localeCompare(valueA)
                 }
+            } else if (sortField === 'workspace') {
+                // Case insensitive string comparison for workspace
+                const valueA = (a.workspaceName || '').toLowerCase()
+                const valueB = (b.workspaceName || '').toLowerCase()
+
+                if (sortDirection === 'asc') {
+                    return valueA.localeCompare(valueB)
+                } else {
+                    return valueB.localeCompare(valueA)
+                }
             }
             return 0
         })
 
         return sorted
-    }, [reports, sortField, sortDirection])
+    }, [
+        reports,
+        sortField,
+        sortDirection,
+        searchText,
+        selectedWorkspace,
+        selectedCategory,
+        categories,
+    ])
 
     // Calculate pagination
     const totalItems = filteredAndSortedReports.length
@@ -269,6 +601,18 @@ const ReportsListPage = () => {
         return options
     }, [categories])
 
+    // Workspace options for filter
+    const workspaceOptions = useMemo(() => {
+        const options = [{ value: 'all', label: 'All Workspaces' }]
+        workspaces.forEach((workspace) => {
+            options.push({
+                value: workspace.id.toString(),
+                label: workspace.name,
+            })
+        })
+        return options
+    }, [workspaces])
+
     const handlePageSizeChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
         const newSize = parseInt(newValue.value, 10)
@@ -279,7 +623,94 @@ const ReportsListPage = () => {
     const handleCategoryChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
         setSelectedCategory(newValue.value)
-        fetchReports()
+        // fetchReports will be called automatically by useEffect
+    }
+
+    const handleWorkspaceChange = (newValue: SingleValue<SelectOption>) => {
+        if (!newValue) return
+        setSelectedWorkspace(newValue.value)
+        // fetchReports will be called automatically by useEffect
+    }
+
+    const handleSelectReport = (reportId: string, selected: boolean) => {
+        setSelectedReports((prev) => {
+            const newSet = new Set(prev)
+            if (selected) {
+                newSet.add(reportId)
+            } else {
+                newSet.delete(reportId)
+            }
+            return newSet
+        })
+    }
+
+    const handleSelectAllReports = (selected: boolean) => {
+        if (selected) {
+            setSelectedReports(
+                new Set(paginatedReports.map((report) => report.id)),
+            )
+        } else {
+            setSelectedReports(new Set())
+        }
+    }
+
+    const handleBulkApprove = async (isApproved: boolean) => {
+        if (selectedReports.size === 0) {
+            toast.push(
+                <Notification type="warning" title="No reports selected">
+                    Please select at least one report to{' '}
+                    {isApproved ? 'approve' : 'unapprove'}
+                </Notification>,
+            )
+            return
+        }
+
+        setBulkOperationLoading(true)
+        try {
+            const reportIdsAsNumbers = Array.from(selectedReports).map((id) => {
+                const num = parseInt(id, 10)
+                if (isNaN(num)) {
+                    throw new Error(`Invalid report ID: ${id}`)
+                }
+                return num
+            })
+
+            console.log(
+                `Bulk ${isApproved ? 'approving' : 'unapproving'} reports:`,
+                reportIdsAsNumbers,
+            )
+            await ReportService.bulkApproveReportsNew(
+                reportIdsAsNumbers,
+                isApproved,
+            )
+            await fetchReports()
+
+            toast.push(
+                <Notification
+                    type="success"
+                    title={`Reports ${isApproved ? 'approved' : 'unapproved'}`}
+                >
+                    {selectedReports.size} report(s) have been{' '}
+                    {isApproved ? 'approved' : 'unapproved'}
+                </Notification>,
+            )
+
+            setSelectedReports(new Set()) // Clear selections after operation
+        } catch (error) {
+            console.error(
+                `Error bulk ${isApproved ? 'approving' : 'unapproving'} reports:`,
+                error,
+            )
+            toast.push(
+                <Notification type="danger" title="Error updating reports">
+                    {error instanceof Error
+                        ? error.message
+                        : 'An unknown error occurred'}
+                </Notification>,
+            )
+        } finally {
+            setBulkOperationLoading(false)
+        }
     }
 
     if (!isTenantAdmin) {
@@ -296,60 +727,110 @@ const ReportsListPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <h3 className="text-lg font-medium text-center md:text-left">
-                    Reports
-                </h3>{' '}
-                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-end gap-2 w-full md:w-auto">
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h4 className="mb-1">Reports</h4>
+                        <p className="text-gray-600 text-sm">
+                            Manage tenant reports and their assignments
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Filter by Category:
+                                </label>
+                                <Select
+                                    options={categoryOptions}
+                                    value={categoryOptions.find(
+                                        (option) =>
+                                            option.value === selectedCategory,
+                                    )}
+                                    onChange={handleCategoryChange}
+                                    className="min-w-[200px] w-full sm:w-auto"
+                                />
+                            </div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Filter by Workspace:
+                                </label>
+                                <Select
+                                    options={workspaceOptions}
+                                    value={workspaceOptions.find(
+                                        (option) =>
+                                            option.value === selectedWorkspace,
+                                    )}
+                                    onChange={handleWorkspaceChange}
+                                    className="min-w-[200px] w-full sm:w-auto"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                            {selectedReports.size > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                                        {selectedReports.size} selected
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        variant="solid"
+                                        icon={<HiOutlineBadgeCheck />}
+                                        onClick={() => handleBulkApprove(true)}
+                                        disabled={bulkOperationLoading}
+                                        className="bg-green-600 hover:bg-green-700 disabled:bg-green-400"
+                                    >
+                                        {bulkOperationLoading
+                                            ? 'Processing...'
+                                            : 'Approve'}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="solid"
+                                        icon={<HiOutlineX />}
+                                        onClick={() => handleBulkApprove(false)}
+                                        disabled={bulkOperationLoading}
+                                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400"
+                                    >
+                                        {bulkOperationLoading
+                                            ? 'Processing...'
+                                            : 'Unapprove'}
+                                    </Button>
+                                </div>
+                            )}
+                            <Button
+                                size="sm"
+                                variant="solid"
+                                icon={<HiOutlineAdjustments />}
+                                onClick={() =>
+                                    navigate(
+                                        '/tenantportal/tenant/reports/bulk-assign',
+                                    )
+                                }
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                Bulk Category Assignment
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Content Card */}
+            <Card className="px-0 sm:px-4">
+                {/* Search bar inside card, above table */}
+                <div className="px-4 sm:px-4 pt-4 pb-2">
                     <Input
                         prefix={<HiOutlineSearch className="text-lg" />}
-                        placeholder="Search reports..."
+                        placeholder="Search by name, description, category, workspace, approval status, enabled status..."
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full sm:w-60"
-                    />
-                    <Button
-                        size="sm"
-                        variant="solid"
-                        icon={<HiOutlineSearch />}
-                        onClick={fetchReports}
-                        className="w-full sm:w-auto"
-                    >
-                        Search
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="solid"
-                        icon={<HiOutlineAdjustments />}
-                        onClick={() =>
-                            navigate('/tenantportal/tenant/reports/bulk-assign')
-                        }
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
-                    >
-                        Bulk Category Assignment
-                    </Button>
-                </div>
-            </div>
-
-            {/* Category filter */}
-            <div className="mb-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Filter by Category:
-                    </label>
-                    <Select
-                        options={categoryOptions}
-                        value={categoryOptions.find(
-                            (option) => option.value === selectedCategory,
-                        )}
-                        onChange={handleCategoryChange}
-                        className="min-w-[200px] w-full sm:w-auto"
+                        className="w-full text-base py-3"
+                        size="lg"
                     />
                 </div>
-            </div>
-
-            <Card className="px-0 sm:px-4">
                 {loading ? (
                     <div className="flex justify-center items-center py-8">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -359,6 +840,22 @@ const ReportsListPage = () => {
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-800">
                                 <tr>
+                                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                paginatedReports.length > 0 &&
+                                                selectedReports.size ===
+                                                    paginatedReports.length
+                                            }
+                                            onChange={(e) =>
+                                                handleSelectAllReports(
+                                                    e.target.checked,
+                                                )
+                                            }
+                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                    </th>
                                     <th
                                         className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
                                         onClick={() => toggleSort('name')}
@@ -380,10 +877,22 @@ const ReportsListPage = () => {
                                     <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Category
                                     </th>
-                                    <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Status
+                                    <th
+                                        className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+                                        onClick={() => toggleSort('workspace')}
+                                    >
+                                        <div className="flex items-center">
+                                            Workspace
+                                            {sortField === 'workspace' && (
+                                                <span className="ml-1">
+                                                    {sortDirection === 'asc'
+                                                        ? '↑'
+                                                        : '↓'}
+                                                </span>
+                                            )}
+                                        </div>
                                     </th>
-                                    <th className="hidden sm:table-cell px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Approved
                                     </th>
                                     <th className="hidden sm:table-cell px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -398,7 +907,7 @@ const ReportsListPage = () => {
                                 {paginatedReports.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={8}
                                             className="px-6 py-4 text-center text-gray-500"
                                         >
                                             No reports found
@@ -411,33 +920,77 @@ const ReportsListPage = () => {
                                             className="hover:bg-gray-50 dark:hover:bg-gray-800"
                                         >
                                             <td className="px-4 sm:px-6 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedReports.has(
+                                                        report.id,
+                                                    )}
+                                                    onChange={(e) =>
+                                                        handleSelectReport(
+                                                            report.id,
+                                                            e.target.checked,
+                                                        )
+                                                    }
+                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                            </td>
+                                            <td className="px-4 sm:px-6 py-4">
                                                 <div className="font-semibold text-gray-900 dark:text-gray-100">
                                                     {report.name}
                                                 </div>
-                                                {/* Show category and status on mobile */}
+                                                {/* Show category, workspace and approval status on mobile */}
                                                 <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="truncate max-w-[150px]">
-                                                            {report.categoryName ||
-                                                                'No category'}
-                                                        </span>
-                                                        <Tag
-                                                            className={`rounded-full px-2 whitespace-nowrap ml-2 ${
-                                                                report.isEnabled
-                                                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
-                                                                    : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-200'
-                                                            }`}
-                                                        >
-                                                            {report.isEnabled
-                                                                ? 'Enabled'
-                                                                : 'Disabled'}
-                                                        </Tag>
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="truncate max-w-[120px]">
+                                                                {report.categoryName ||
+                                                                    'No category'}
+                                                            </span>
+                                                            <div className="flex gap-1 ml-2">
+                                                                <Tag
+                                                                    className={`rounded-full px-2 whitespace-nowrap text-xs ${
+                                                                        (report.isTenantApproved ??
+                                                                        report.status ===
+                                                                            'Approved')
+                                                                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
+                                                                            : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-200'
+                                                                    }`}
+                                                                >
+                                                                    {(report.isTenantApproved ??
+                                                                    report.status ===
+                                                                        'Approved')
+                                                                        ? 'Approved'
+                                                                        : 'Pending'}
+                                                                </Tag>
+                                                                <Tag
+                                                                    className={`rounded-full px-2 whitespace-nowrap text-xs ${
+                                                                        (report.isTenantEnabled ??
+                                                                        true)
+                                                                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
+                                                                            : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-200'
+                                                                    }`}
+                                                                >
+                                                                    {(report.isTenantEnabled ??
+                                                                    true)
+                                                                        ? 'Enabled'
+                                                                        : 'Disabled'}
+                                                                </Tag>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">
+                                                            <span className="font-medium">
+                                                                Workspace:
+                                                            </span>{' '}
+                                                            {report.workspaceName ||
+                                                                'Unknown'}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="hidden md:table-cell px-6 py-4">
                                                 <div className="max-w-xs truncate text-gray-600 dark:text-gray-400">
-                                                    {report.description ||
+                                                    {report.tenantDescription ||
+                                                        report.description ||
                                                         'No description'}
                                                 </div>
                                             </td>
@@ -447,36 +1000,43 @@ const ReportsListPage = () => {
                                                         'Uncategorized'}
                                                 </div>
                                             </td>
-                                            <td className="px-4 sm:px-6 py-4 text-center">
-                                                <Tag
-                                                    className={`rounded-full px-2 whitespace-nowrap ${
-                                                        report.isEnabled
-                                                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-200'
-                                                            : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-200'
-                                                    }`}
-                                                >
-                                                    {report.isEnabled
-                                                        ? 'Enabled'
-                                                        : 'Disabled'}
-                                                </Tag>
+                                            <td className="hidden lg:table-cell px-6 py-4">
+                                                <div className="max-w-xs truncate text-gray-600 dark:text-gray-400">
+                                                    {report.workspaceName ||
+                                                        'Unknown Workspace'}
+                                                </div>
                                             </td>
-                                            <td className="hidden sm:table-cell px-6 py-4 text-center">
-                                                {report.isApproved ? (
-                                                    <HiOutlineBadgeCheck className="w-5 h-5 text-emerald-500 mx-auto" />
-                                                ) : (
-                                                    <span className="text-gray-400 text-sm">
-                                                        Pending
-                                                    </span>
-                                                )}
+                                            <td className="px-4 sm:px-6 py-4 text-center">
+                                                <Switcher
+                                                    checked={
+                                                        report.isTenantApproved ??
+                                                        report.status ===
+                                                            'Approved'
+                                                    }
+                                                    onChange={() =>
+                                                        handleToggleApproval(
+                                                            report,
+                                                        )
+                                                    }
+                                                    disabled={updatingReports.has(
+                                                        report.id,
+                                                    )}
+                                                />
                                             </td>
                                             <td className="hidden sm:table-cell px-6 py-4 text-center">
                                                 <Switcher
-                                                    checked={report.isEnabled}
+                                                    checked={
+                                                        report.isTenantEnabled ??
+                                                        true
+                                                    }
                                                     onChange={() =>
                                                         handleToggleEnabled(
                                                             report,
                                                         )
                                                     }
+                                                    disabled={updatingReports.has(
+                                                        report.id,
+                                                    )}
                                                 />
                                             </td>
                                             <td className="px-4 sm:px-6 py-4">
@@ -490,25 +1050,6 @@ const ReportsListPage = () => {
                                                             />
                                                         }
                                                     >
-                                                        {/* Show approve/unapprove option */}
-                                                        <Dropdown.Item
-                                                            eventKey="approve"
-                                                            onClick={() =>
-                                                                handleToggleApproval(
-                                                                    report,
-                                                                )
-                                                            }
-                                                        >
-                                                            <span className="flex items-center gap-2">
-                                                                <HiOutlineBadgeCheck className="text-lg" />
-                                                                <span>
-                                                                    {report.isApproved
-                                                                        ? 'Unapprove'
-                                                                        : 'Approve'}
-                                                                </span>
-                                                            </span>
-                                                        </Dropdown.Item>
-
                                                         {/* Show enable/disable option for small screens */}
                                                         <Dropdown.Item
                                                             className="sm:hidden"
@@ -518,35 +1059,66 @@ const ReportsListPage = () => {
                                                                     report,
                                                                 )
                                                             }
+                                                            disabled={updatingReports.has(
+                                                                report.id,
+                                                            )}
                                                         >
                                                             <span className="flex items-center gap-2">
                                                                 <span
-                                                                    className={`h-2 w-2 rounded-full ${report.isEnabled ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                                                    className={`h-2 w-2 rounded-full ${(report.isTenantEnabled ?? true) ? 'bg-emerald-500' : 'bg-red-500'}`}
                                                                 ></span>
                                                                 <span>
-                                                                    {report.isEnabled
+                                                                    {(report.isTenantEnabled ??
+                                                                    true)
                                                                         ? 'Disable'
                                                                         : 'Enable'}
                                                                 </span>
                                                             </span>
                                                         </Dropdown.Item>
 
-                                                        {/* Launch Report option */}
+                                                        {/* Show approve/unapprove option for small screens */}
                                                         <Dropdown.Item
-                                                            eventKey="launch"
+                                                            className="sm:hidden"
+                                                            eventKey="approve"
                                                             onClick={() =>
-                                                                handleLaunchReport(
+                                                                handleToggleApproval(
                                                                     report,
                                                                 )
                                                             }
+                                                            disabled={updatingReports.has(
+                                                                report.id,
+                                                            )}
                                                         >
-                                                            <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                                                <HiOutlineExternalLink className="text-lg" />
+                                                            <span className="flex items-center gap-2">
+                                                                <HiOutlineBadgeCheck className="text-lg" />
                                                                 <span>
-                                                                    Launch
+                                                                    {(report.isTenantApproved ??
+                                                                    report.status ===
+                                                                        'Approved')
+                                                                        ? 'Unapprove'
+                                                                        : 'Approve'}
                                                                 </span>
                                                             </span>
                                                         </Dropdown.Item>
+
+                                                        {/* Launch Report option */}
+                                                        {canLaunchReports && (
+                                                            <Dropdown.Item
+                                                                eventKey="launch"
+                                                                onClick={() =>
+                                                                    handleLaunchReport(
+                                                                        report,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                                                    <HiOutlineExternalLink className="text-lg" />
+                                                                    <span>
+                                                                        Launch
+                                                                    </span>
+                                                                </span>
+                                                            </Dropdown.Item>
+                                                        )}
 
                                                         {/* Edit Report option */}
                                                         <Dropdown.Item

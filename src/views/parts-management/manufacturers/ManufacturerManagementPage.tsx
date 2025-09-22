@@ -162,25 +162,39 @@ const ManufacturerManagementPage = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    {/* <h1 className="text-2xl font-bold">
-                        Manufacturer Management
-                    </h1> */}
-                    <p className="text-gray-600 mt-1">
-                        Manage manufacturers and their information
-                    </p>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Controls Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h4 className="mb-1">Manufacturer Management</h4>
+                        <p className="text-gray-600">
+                            Manage manufacturers and their information
+                        </p>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiPlusCircle />}
+                        onClick={handleAddNew}
+                        disabled={showForm}
+                        className="w-full sm:w-auto"
+                    >
+                        Add Manufacturer
+                    </Button>
                 </div>
-                <Button
-                    variant="solid"
-                    icon={<HiPlusCircle />}
-                    onClick={handleAddNew}
-                    disabled={showForm}
-                >
-                    Add Manufacturer
-                </Button>
-            </div>
+
+                {/* Search */}
+                <div className="flex items-center">
+                    <HiOutlineSearch className="text-gray-400 mr-2" />
+                    <Input
+                        type="text"
+                        placeholder="Search manufacturers..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="max-w-md"
+                    />
+                </div>
+            </Card>
 
             {showForm && (
                 <ManufacturerForm
@@ -191,20 +205,8 @@ const ManufacturerManagementPage = () => {
                 />
             )}
 
-            <Card className="p-6">
-                <div className="mb-4">
-                    <div className="flex items-center">
-                        <HiOutlineSearch className="text-gray-400 mr-2" />
-                        <Input
-                            type="text"
-                            placeholder="Search manufacturers..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-md"
-                        />
-                    </div>
-                </div>
-
+            {/* Content Card */}
+            <Card>
                 <ManufacturersTable
                     manufacturers={filteredManufacturers}
                     loading={loading}

@@ -9,20 +9,21 @@ interface SplitProps extends CommonProps {
 const Split = ({ children, content, ...rest }: SplitProps) => {
     return (
         <div className="grid lg:grid-cols-2 h-full p-6 bg-white dark:bg-gray-800">
-            <div className="bg-no-repeat bg-cover py-6 px-16 flex-col justify-center items-center hidden lg:flex bg-primary rounded-3xl">
-                <div className="flex flex-col items-center gap-12">
-                    <img
-                        className="max-w-[450px] 2xl:max-w-[900px]"
-                        src="/img/others/auth-split-img.png"
-                    />
-                    <div className="text-center max-w-[550px]">
+            <div className="bg-no-repeat bg-cover py-6 px-16 flex-col justify-end items-center hidden lg:flex bg-primary rounded-3xl overflow-hidden relative">
+                <img
+                    className="absolute inset-0 w-full h-full object-cover rounded-3xl"
+                    src="/img/others/background3.png"
+                    alt="Auth split illustration"
+                />
+                <div className="relative z-10 flex flex-col items-center justify-end h-full">
+                    <div className="text-center max-w-[550px] flex-shrink-0 bg-primary/80 backdrop-blur-sm rounded-2xl p-6">
                         <h1 className="text-neutral">
-                            The easiest way to build your admin app
+                            <span className="font-bold">ClaimsCorp</span> Single
+                            Source Portal
                         </h1>
                         <p className="text-neutral opacity-80 mx-auto mt-8 font-semibold">
-                            Experience seamless project management with Ecme.
-                            Simplify your workflow, and achieve your goals
-                            efficiently with our powerful and intuitive tools.
+                            ClaimsCorp Platform for Reporting, analytics, and
+                            more.
                         </p>
                     </div>
                 </div>

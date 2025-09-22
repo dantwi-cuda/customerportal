@@ -16,6 +16,7 @@ import {
     HiOutlineExternalLink,
     HiOutlinePencilAlt,
     HiOutlineUserGroup,
+    HiOutlineArrowLeft,
 } from 'react-icons/hi'
 
 const WorkspaceDetailsPage = () => {
@@ -59,23 +60,43 @@ const WorkspaceDetailsPage = () => {
             setWorkspace(workspaceData)
 
             // Get workspace assignments to get customer-specific details
-            const assignments = await WorkspaceService.getWorkspaceAssignments()            console.log("Looking for assignment with workspaceId:", workspaceId, "and customerId:", customerId);
-            console.log("All assignments:", assignments);
-            
-            const tenantAssignment = assignments.find(
-                (a) => {
-                    // Debug logging
-                    console.log("Checking assignment:", a);
-                    console.log("Comparing workspaceId:", a.workspaceId, "===", workspaceId, "Result:", a.workspaceId === workspaceId);
-                    console.log("Comparing customerId:", String(a.customerId), "===", String(customerId), "Result:", String(a.customerId) === String(customerId));
-                    
-                    // Make sure both IDs are strings for consistent comparison
-                    return String(a.workspaceId) === String(workspaceId) && 
-                           String(a.customerId) === String(customerId);
-                }
+            const assignments = await WorkspaceService.getWorkspaceAssignments()
+            console.log(
+                'Looking for assignment with workspaceId:',
+                workspaceId,
+                'and customerId:',
+                customerId,
             )
-            
-            console.log("Found tenant assignment:", tenantAssignment);
+            console.log('All assignments:', assignments)
+
+            const tenantAssignment = assignments.find((a) => {
+                // Debug logging
+                console.log('Checking assignment:', a)
+                console.log(
+                    'Comparing workspaceId:',
+                    a.workspaceId,
+                    '===',
+                    workspaceId,
+                    'Result:',
+                    a.workspaceId === workspaceId,
+                )
+                console.log(
+                    'Comparing customerId:',
+                    String(a.customerId),
+                    '===',
+                    String(customerId),
+                    'Result:',
+                    String(a.customerId) === String(customerId),
+                )
+
+                // Make sure both IDs are strings for consistent comparison
+                return (
+                    String(a.workspaceId) === String(workspaceId) &&
+                    String(a.customerId) === String(customerId)
+                )
+            })
+
+            console.log('Found tenant assignment:', tenantAssignment)
 
             if (!tenantAssignment) {
                 throw new Error('This workspace is not assigned to your tenant')
@@ -146,17 +167,59 @@ const WorkspaceDetailsPage = () => {
     }
 
     return (
-        <div className="p-4 max-w-4xl mx-auto">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <h3 className="text-lg font-medium">Workspace Details</h3>
-                <Button
-                    onClick={() => navigate('/tenantportal/tenant/workspaces')}
-                >
-                    Back to Workspaces
-                </Button>
-            </div>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={() =>
+                                navigate('/tenantportal/tenant/workspaces')
+                            }
+                        >
+                            Back to Workspaces
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">Workspace Details</h4>
+                            <p className="text-gray-600 text-sm">
+                                View workspace information and settings
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                        <Button
+                            size="sm"
+                            variant="default"
+                            icon={<HiOutlinePencilAlt />}
+                            onClick={() =>
+                                navigate(
+                                    `/tenantportal/tenant/workspaces/${workspaceId}/edit`,
+                                )
+                            }
+                        >
+                            Edit
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="solid"
+                            icon={<HiOutlineUserGroup />}
+                            onClick={() =>
+                                navigate(
+                                    `/tenantportal/tenant/workspaces/${workspaceId}/assignments`,
+                                )
+                            }
+                        >
+                            Assignments
+                        </Button>
+                    </div>
+                </div>
+            </Card>
 
-            <Card className="mb-6">
+            {/* Content Card */}
+            <Card>
                 <div className="p-4">
                     <div className="flex justify-between items-start">
                         <div>
@@ -168,30 +231,6 @@ const WorkspaceDetailsPage = () => {
                                     Original name: {workspace.name}
                                 </p>
                             )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                icon={<HiOutlinePencilAlt />}
-                                onClick={() =>
-                                    navigate(
-                                        `/tenantportal/tenant/workspaces/${workspaceId}/edit`,
-                                    )
-                                }
-                            >
-                                Edit
-                            </Button>
-                            <Button
-                                size="sm"
-                                icon={<HiOutlineUserGroup />}
-                                onClick={() =>
-                                    navigate(
-                                        `/tenantportal/tenant/workspaces/${workspaceId}/assignments`,
-                                    )
-                                }
-                            >
-                                Assignments
-                            </Button>
                         </div>
                     </div>
 
@@ -217,7 +256,7 @@ const WorkspaceDetailsPage = () => {
                                 <div className="text-sm text-gray-500 mb-1">
                                     ID
                                 </div>
-                                <div>{workspace.workspaceId}</div>
+                                <div>{workspace.workspaceID}</div>
                             </div>
                             <div>
                                 <div className="text-sm text-gray-500 mb-1">

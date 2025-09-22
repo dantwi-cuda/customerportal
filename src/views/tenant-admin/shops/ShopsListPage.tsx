@@ -28,7 +28,7 @@ import {
 import EllipsisButton from '@/components/shared/EllipsisButton'
 import * as ShopService from '@/services/ShopService'
 import { useNavigate } from 'react-router-dom'
-import type { Shop } from '@/@types/shop'
+import type { Shop, ShopPaginatedResponse } from '@/@types/shop'
 import useAuth from '@/auth/useAuth'
 import type { SingleValue } from 'react-select'
 
@@ -49,14 +49,25 @@ const ShopsListPage = () => {
     const [selectedCity, setSelectedCity] = useState<string>('all')
     const [selectedState, setSelectedState] = useState<string>('all')
     const [selectedProgram, setSelectedProgram] = useState<string>('all')
+    const [selectedStatus, setSelectedStatus] = useState<string>('all')
 
-    // Sorting state
+    // Server-side pagination state
+    const [totalCount, setTotalCount] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(20)
+
+    // Available filter options (loaded from all shops for filter dropdowns)
+    const [allCities, setAllCities] = useState<string[]>([])
+    const [allStates, setAllStates] = useState<string[]>([])
+    const [allPrograms, setAllPrograms] = useState<string[]>([])
+
+    // Loading states for individual shops
+    const [updatingShops, setUpdatingShops] = useState<Set<number>>(new Set())
+
+    // Sorting state (not used for server-side sorting yet)
     const [sortField, setSortField] = useState<string>('name')
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-
-    // Pagination state
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageSize, setPageSize] = useState(10)
 
     // Tenant admin check: User must have a tenantId to manage shops
     const isTenantAdmin = !!user?.tenantId
@@ -65,25 +76,71 @@ const ShopsListPage = () => {
         if (isTenantAdmin) {
             fetchShops()
         }
-    }, [user])
+    }, [user, currentPage, pageSize])
 
     // Reset to first page when filters change
     useEffect(() => {
-        setCurrentPage(1)
-    }, [searchText, selectedCity, selectedState, selectedProgram])
+        if (currentPage !== 1) {
+            setCurrentPage(1)
+        } else {
+            fetchShops()
+        }
+    }, [
+        searchText,
+        selectedCity,
+        selectedState,
+        selectedProgram,
+        selectedStatus,
+    ])
 
     const fetchShops = async () => {
         setLoading(true)
         try {
-            const filters = {
+            const params = {
                 searchText: searchText || undefined,
                 city: selectedCity !== 'all' ? selectedCity : undefined,
                 state: selectedState !== 'all' ? selectedState : undefined,
                 program:
                     selectedProgram !== 'all' ? selectedProgram : undefined,
+                isActive:
+                    selectedStatus !== 'all'
+                        ? selectedStatus === 'active'
+                        : undefined,
+                page: currentPage,
+                pageSize: pageSize,
             }
-            const data = await ShopService.getShopsList(filters)
-            setShops(data)
+
+            console.log('Fetching shops with params:', params)
+
+            const response: ShopPaginatedResponse =
+                await ShopService.getShopsList(params)
+
+            setShops(response.shops)
+            setTotalCount(response.totalCount)
+            setTotalPages(response.totalPages)
+
+            // Extract unique values for filter dropdowns from current results
+            // Note: In a real implementation, you might want to get these from a separate endpoint
+            // that returns all unique values without pagination
+            const cities = [
+                ...new Set(
+                    response.shops.map((shop) => shop.city).filter(Boolean),
+                ),
+            ]
+            const states = [
+                ...new Set(
+                    response.shops.map((shop) => shop.state).filter(Boolean),
+                ),
+            ]
+            const programs = [
+                ...new Set(
+                    response.shops.flatMap((shop) => shop.programNames || []),
+                ),
+            ]
+
+            setAllCities((prev) => [...new Set([...prev, ...cities])])
+            setAllStates((prev) => [...new Set([...prev, ...states])])
+            setAllPrograms((prev) => [...new Set([...prev, ...programs])])
         } catch (error) {
             console.error('Error fetching shops:', error)
             toast.push(
@@ -146,6 +203,9 @@ const ShopsListPage = () => {
     }
 
     const handleToggleActive = async (shop: Shop) => {
+        if (updatingShops.has(shop.id)) return // Prevent multiple simultaneous updates
+
+        setUpdatingShops((prev) => new Set(prev).add(shop.id))
         try {
             if (shop.isActive) {
                 await ShopService.deactivateShop(shop.id)
@@ -171,52 +231,22 @@ const ShopsListPage = () => {
                         : 'An unknown error occurred'}
                 </Notification>,
             )
+        } finally {
+            setUpdatingShops((prev) => {
+                const newSet = new Set(prev)
+                newSet.delete(shop.id)
+                return newSet
+            })
         }
     }
 
-    // Filter and sort shops
-    const filteredAndSortedShops = useMemo(() => {
-        let filtered = shops
+    // Since we're using server-side pagination, we don't need client-side filtering or sorting
+    // The shops displayed are exactly what we get from the server
+    const displayedShops = shops
 
-        // Apply sorting
-        const sorted = [...filtered].sort((a, b) => {
-            if (sortField === 'name') {
-                const valueA = a.name.toLowerCase()
-                const valueB = b.name.toLowerCase()
-                if (sortDirection === 'asc') {
-                    return valueA.localeCompare(valueB)
-                } else {
-                    return valueB.localeCompare(valueA)
-                }
-            } else if (sortField === 'city') {
-                const valueA = (a.city || '').toLowerCase()
-                const valueB = (b.city || '').toLowerCase()
-                if (sortDirection === 'asc') {
-                    return valueA.localeCompare(valueB)
-                } else {
-                    return valueB.localeCompare(valueA)
-                }
-            } else if (sortField === 'state') {
-                const valueA = (a.state || '').toLowerCase()
-                const valueB = (b.state || '').toLowerCase()
-                if (sortDirection === 'asc') {
-                    return valueA.localeCompare(valueB)
-                } else {
-                    return valueB.localeCompare(valueA)
-                }
-            }
-            return 0
-        })
-
-        return sorted
-    }, [shops, sortField, sortDirection])
-
-    // Calculate pagination
-    const totalItems = filteredAndSortedShops.length
-    const totalPages = Math.ceil(totalItems / pageSize)
+    // Calculate display information for server-side pagination
     const startIndex = (currentPage - 1) * pageSize
-    const endIndex = Math.min(startIndex + pageSize, totalItems)
-    const paginatedShops = filteredAndSortedShops.slice(startIndex, endIndex)
+    const endIndex = Math.min(startIndex + pageSize, totalCount)
 
     // Pagination handlers
     const handlePageChange = (page: number) => {
@@ -235,57 +265,57 @@ const ShopsListPage = () => {
 
     // Page size dropdown options
     const pageSizeOptions = [
-        { value: '5', label: '5' },
         { value: '10', label: '10' },
         { value: '20', label: '20' },
         { value: '50', label: '50' },
         { value: '100', label: '100' },
     ]
 
-    // Get unique cities from shops for filter
+    // Get unique cities from state for filter
     const cityOptions = useMemo(() => {
         const options = [{ value: 'all', label: 'All Cities' }]
-        const uniqueCities = [
-            ...new Set(shops.map((shop) => shop.city).filter(Boolean)),
-        ]
-        uniqueCities.forEach((city) => {
+        allCities.forEach((city) => {
             options.push({
                 value: city,
                 label: city,
             })
         })
         return options
-    }, [shops])
+    }, [allCities])
 
-    // Get unique states from shops for filter
+    // Get unique states from state for filter
     const stateOptions = useMemo(() => {
         const options = [{ value: 'all', label: 'All States' }]
-        const uniqueStates = [
-            ...new Set(shops.map((shop) => shop.state).filter(Boolean)),
-        ]
-        uniqueStates.forEach((state) => {
+        allStates.forEach((state) => {
             options.push({
                 value: state,
                 label: state,
             })
         })
         return options
-    }, [shops])
+    }, [allStates])
 
-    // Get unique programs from shops for filter
+    // Get unique programs from state for filter
     const programOptions = useMemo(() => {
         const options = [{ value: 'all', label: 'All Programs' }]
-        const uniquePrograms = [
-            ...new Set(shops.flatMap((shop) => shop.programNames || [])),
-        ]
-        uniquePrograms.forEach((program) => {
+        allPrograms.forEach((program) => {
             options.push({
                 value: program,
                 label: program,
             })
         })
         return options
-    }, [shops])
+    }, [allPrograms])
+
+    // Status filter options
+    const statusOptions = useMemo(
+        () => [
+            { value: 'all', label: 'All Status' },
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+        ],
+        [],
+    )
 
     const handlePageSizeChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
@@ -297,19 +327,21 @@ const ShopsListPage = () => {
     const handleCityChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
         setSelectedCity(newValue.value)
-        fetchShops()
     }
 
     const handleStateChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
         setSelectedState(newValue.value)
-        fetchShops()
     }
 
     const handleProgramChange = (newValue: SingleValue<SelectOption>) => {
         if (!newValue) return
         setSelectedProgram(newValue.value)
-        fetchShops()
+    }
+
+    const handleStatusChange = (newValue: SingleValue<SelectOption>) => {
+        if (!newValue) return
+        setSelectedStatus(newValue.value)
     }
 
     if (!isTenantAdmin) {
@@ -326,24 +358,28 @@ const ShopsListPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <h3 className="text-lg font-medium text-center md:text-left">
-                    Shop Management
-                </h3>
-                <Button
-                    size="sm"
-                    variant="solid"
-                    icon={<HiOutlinePlus />}
-                    onClick={handleCreateShop}
-                >
-                    Create Shop
-                </Button>
-            </div>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Filters Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h4 className="mb-1">Shop Management</h4>
+                        <p className="text-gray-600">
+                            Manage shops and their configurations
+                        </p>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiOutlinePlus />}
+                        onClick={handleCreateShop}
+                        className="w-full sm:w-auto"
+                    >
+                        Create Shop
+                    </Button>
+                </div>
 
-            {/* Filters */}
-            <Card className="mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4">
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-2">
                             Search
@@ -401,6 +437,21 @@ const ShopsListPage = () => {
                         />
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium mb-2">
+                            Status
+                        </label>
+                        <Select
+                            placeholder="Select status"
+                            value={statusOptions.find(
+                                (option) => option.value === selectedStatus,
+                            )}
+                            onChange={handleStatusChange}
+                            options={statusOptions}
+                            isClearable={false}
+                        />
+                    </div>
+
                     <div className="flex items-end">
                         <Button
                             size="sm"
@@ -414,12 +465,12 @@ const ShopsListPage = () => {
                 </div>
             </Card>
 
-            {/* Main Content */}
+            {/* Table Card */}
             <Card>
                 {/* Table Header with Pagination Controls */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 border-b">
                     <div className="text-sm text-gray-600">
-                        Showing {startIndex + 1} to {endIndex} of {totalItems}{' '}
+                        Showing {startIndex + 1} to {endIndex} of {totalCount}{' '}
                         shops
                     </div>
                     <div className="flex items-center gap-2">
@@ -516,7 +567,7 @@ const ShopsListPage = () => {
                                         <div>Loading shops...</div>
                                     </td>
                                 </tr>
-                            ) : paginatedShops.length === 0 ? (
+                            ) : displayedShops.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={6}
@@ -526,7 +577,7 @@ const ShopsListPage = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                paginatedShops.map((shop) => (
+                                displayedShops.map((shop: Shop) => (
                                     <tr
                                         key={shop.id}
                                         className="hover:bg-gray-50"
@@ -552,39 +603,51 @@ const ShopsListPage = () => {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex flex-wrap gap-1">
+                                            <div className="flex items-center">
                                                 {shop.programNames &&
                                                 shop.programNames.length > 0 ? (
-                                                    shop.programNames
-                                                        .slice(0, 2)
-                                                        .map(
-                                                            (
-                                                                program,
-                                                                index,
-                                                            ) => (
-                                                                <Tag
-                                                                    key={index}
-                                                                >
-                                                                    {program}
-                                                                </Tag>
-                                                            ),
-                                                        )
-                                                ) : (
-                                                    <span className="text-sm text-gray-500">
-                                                        No programs
-                                                    </span>
-                                                )}
-                                                {shop.programNames &&
-                                                    shop.programNames.length >
-                                                        2 && (
-                                                        <Tag className="bg-gray-100">
-                                                            +
+                                                    <button
+                                                        onClick={() =>
+                                                            handleAssignPrograms(
+                                                                shop,
+                                                            )
+                                                        }
+                                                        className="group flex items-center gap-2 hover:bg-blue-50 rounded-lg px-2 py-1 transition-colors"
+                                                    >
+                                                        <div className="bg-blue-100 text-blue-800 font-semibold px-3 py-1 rounded-full text-sm group-hover:bg-blue-200 transition-colors">
+                                                            {
+                                                                shop
+                                                                    .programNames
+                                                                    .length
+                                                            }
+                                                        </div>
+                                                        <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                                                            program
                                                             {shop.programNames
-                                                                .length -
-                                                                2}{' '}
-                                                            more
-                                                        </Tag>
-                                                    )}
+                                                                .length !== 1
+                                                                ? 's'
+                                                                : ''}
+                                                        </span>
+                                                        <HiOutlineExternalLink className="w-3 h-3 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() =>
+                                                            handleAssignPrograms(
+                                                                shop,
+                                                            )
+                                                        }
+                                                        className="group flex items-center gap-2 hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+                                                    >
+                                                        <div className="bg-gray-100 text-gray-600 font-semibold px-3 py-1 rounded-full text-sm group-hover:bg-gray-200 transition-colors">
+                                                            0
+                                                        </div>
+                                                        <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
+                                                            programs
+                                                        </span>
+                                                        <HiOutlinePlus className="w-3 h-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">
@@ -594,6 +657,9 @@ const ShopsListPage = () => {
                                                     onChange={() =>
                                                         handleToggleActive(shop)
                                                     }
+                                                    disabled={updatingShops.has(
+                                                        shop.id,
+                                                    )}
                                                 />
                                                 <span className="text-sm">
                                                     {shop.isActive
@@ -606,7 +672,7 @@ const ShopsListPage = () => {
                                             <span className="text-sm text-gray-600">
                                                 {shop.source || 'N/A'}
                                             </span>
-                                        </td>{' '}
+                                        </td>
                                         <td className="px-4 py-3 text-center">
                                             <Dropdown
                                                 placement="bottom-end"
@@ -657,7 +723,6 @@ const ShopsListPage = () => {
                                                     }
                                                     className="text-red-600"
                                                 >
-                                                    {' '}
                                                     <HiOutlineTrash className="mr-2" />
                                                     Delete Shop
                                                 </Dropdown.Item>
@@ -673,9 +738,8 @@ const ShopsListPage = () => {
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex justify-center py-4">
-                        {' '}
                         <Pagination
-                            total={totalItems}
+                            total={totalCount}
                             currentPage={currentPage}
                             pageSize={pageSize}
                             onChange={handlePageChange}

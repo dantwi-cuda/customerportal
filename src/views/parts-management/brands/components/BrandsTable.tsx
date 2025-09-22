@@ -1,19 +1,25 @@
 import React, { useRef } from 'react'
 import { Table } from '@/components/ui'
 import Dropdown from '@/components/ui/Dropdown'
+import Tag from '@/components/ui/Tag'
 import EllipsisButton from '@/components/shared/EllipsisButton'
 import { HiPencil, HiTrash } from 'react-icons/hi'
-import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/shared'
 import type { Brand } from '@/@types/parts'
 import type { DropdownRef } from '@/components/ui/Dropdown'
 import type { MouseEvent, SyntheticEvent } from 'react'
+import classNames from '@/utils/classNames'
 
 interface BrandsTableProps {
     brands: Brand[]
     loading?: boolean
     onEdit: (brand: Brand) => void
     onDelete: (brandId: number) => void
+}
+
+const brandStatus: Record<string, { label: string; className: string }> = {
+    active: { label: 'Active', className: 'bg-emerald-200' },
+    inactive: { label: 'Inactive', className: 'bg-red-200' },
 }
 
 const BrandsTable: React.FC<BrandsTableProps> = ({
@@ -57,15 +63,17 @@ const BrandsTable: React.FC<BrandsTableProps> = ({
                                 {brand.manufacturerName || 'N/A'}
                             </Table.Td>
                             <Table.Td>
-                                <Badge
-                                    className={
+                                <Tag
+                                    className={classNames(
                                         brand.isActive
-                                            ? 'bg-emerald-500'
-                                            : 'bg-red-500'
-                                    }
+                                            ? brandStatus.active.className
+                                            : brandStatus.inactive.className,
+                                    )}
                                 >
-                                    {brand.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
+                                    {brand.isActive
+                                        ? brandStatus.active.label
+                                        : brandStatus.inactive.label}
+                                </Tag>
                             </Table.Td>
                             <Table.Td className="whitespace-nowrap">
                                 <BrandActionsDropdown

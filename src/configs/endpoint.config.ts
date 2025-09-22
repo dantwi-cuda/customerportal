@@ -6,7 +6,7 @@ const endpointConfig = {
     auth: {
         signIn: 'Auth/login',
         signOut: 'Auth/logout',
-        refreshToken: 'Auth/refresh-token',
+        refreshToken: 'Auth/refresh',
         verifyMfa: 'Auth/verify-mfa',
         changePassword: 'Auth/change-password',
         resetPassword: 'Auth/reset-password',

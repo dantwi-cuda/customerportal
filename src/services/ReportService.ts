@@ -10,13 +10,24 @@ import type {
 // Report APIs
 export async function getReportsList(filters?: { 
     workspaceId?: string, 
-    categoryId?: string, 
+    categoryId?: string,
+    category?: string,
+    Category?: string, // Add support for capital C
     search?: string 
 }) {
+    // Handle both category and Category parameters
+    const params = { ...filters }
+    if (params.category && !params.Category) {
+        params.Category = params.category
+        delete params.category
+    }
+    
+    console.log('ReportService.getReportsList called with params:', params)
+    
     return ApiService.fetchDataWithAxios<Report[]>({
         url: '/api/Report',
         method: 'get',
-        params: filters
+        params
     })
 }
 
@@ -57,6 +68,83 @@ export async function getReportEmbedToken(reportId: string) {
     })
 }
 
+// Test dataset access for debugging
+export async function testDatasetAccess(reportId: string) {
+    try {
+        console.log('🔍 Testing dataset access for report:', reportId)
+        
+        // Try to get dataset information through the report
+        const response = await ApiService.fetchDataWithAxios({
+            url: `/api/Report/${reportId}/dataset-info`,
+            method: 'get'
+        })
+        
+        console.log('✅ Dataset access test successful:', response)
+        return { hasAccess: true, details: response }
+    } catch (error) {
+        console.log('❌ Dataset access test failed:', error)
+        return { hasAccess: false, error }
+    }
+}
+
+// Get detailed embed token with dataset permissions
+export async function getReportEmbedTokenWithDatasetAccess(reportId: string) {
+    try {
+        console.log('🔍 Requesting embed token with dataset access for report:', reportId)
+        
+        const response = await ApiService.fetchDataWithAxios<ReportEmbedToken>({
+            url: `/api/Report/${reportId}/embed-config`,
+            method: 'get',
+            params: {
+                includeDatasetAccess: true, // Request dataset access explicitly
+                permissions: 'All' // Request all permissions to test
+            }
+        })
+        
+        console.log('✅ Embed token with dataset access received:', {
+            hasToken: !!response.embedToken,
+            tokenLength: response.embedToken?.length,
+            reportId: response.reportId,
+            embedUrl: response.embedUrl,
+            expiration: response.expiresInMinutes,
+            datasetId: response.datasetId,
+            datasetName: response.datasetName,
+            isEffectiveIdentityRequired: response.isEffectiveIdentityRequired,
+            isEffectiveIdentityRolesRequired: response.isEffectiveIdentityRolesRequired,
+        })
+        
+        return response
+    } catch (error) {
+        console.log('❌ Failed to get embed token with dataset access:', error)
+        throw error
+    }
+}
+
+// Get embed token with effective identity for RLS-enabled reports
+export async function getReportEmbedTokenWithRLS(reportId: string, effectiveIdentity?: {
+    username: string
+    roles?: string[]
+    datasets: string[]
+}) {
+    try {
+        console.log('🔍 Requesting embed token with RLS identity for report:', reportId)
+        
+        const response = await ApiService.fetchDataWithAxios<ReportEmbedToken>({
+            url: `/api/Report/${reportId}/embed-config`,
+            method: 'get',
+            params: {
+                effectiveIdentity: effectiveIdentity
+            }
+        })
+        
+        console.log('✅ Embed token with RLS received:', response)
+        return response
+    } catch (error) {
+        console.log('❌ Failed to get embed token with RLS:', error)
+        throw error
+    }
+}
+
 export async function bulkApproveReports(reportIds: string[]) {
     return ApiService.fetchDataWithAxios<void>({
         url: '/api/Report/bulk/approve',
@@ -65,7 +153,15 @@ export async function bulkApproveReports(reportIds: string[]) {
     })
 }
 
-export async function bulkSetReportStatus(reportIds: string[], isEnabled: boolean) {
+export async function bulkApproveReportsNew(reportIds: number[], isApproved: boolean) {
+    return ApiService.fetchDataWithAxios<void>({
+        url: '/api/Report/bulk/approve',
+        method: 'post',
+        data: { reportIds, isApproved }
+    })
+}
+
+export async function bulkSetReportStatus(reportIds: number[], isEnabled: boolean) {
     return ApiService.fetchDataWithAxios<void>({
         url: '/api/Report/bulk/set-status',
         method: 'post',
@@ -198,14 +294,80 @@ export async function assignReportsToUser(userId: string, reportIds: number[]) {
     })
 }
 
+// User Report Favorites APIs
+export async function addToFavorites(reportId: number, note?: string) {
+    return ApiService.fetchDataWithAxios<void>({
+        url: '/api/UserReportFavorite',
+        method: 'post',
+        data: { reportId, note }
+    })
+}
+
+export async function removeFromFavorites(reportId: number) {
+    return ApiService.fetchDataWithAxios<void>({
+        url: `/api/UserReportFavorite/${reportId}`,
+        method: 'delete'
+    })
+}
+
+export async function getFavoriteReports() {
+    return ApiService.fetchDataWithAxios<Report[]>({
+        url: '/api/UserReportFavorite',
+        method: 'get'
+    })
+}
+
+export async function isReportFavorited(reportId: number) {
+    return ApiService.fetchDataWithAxios<{ isFavorited: boolean }>({
+        url: `/api/UserReportFavorite/${reportId}/is-favorited`,
+        method: 'get'
+    })
+}
+
+export async function updateFavoriteNote(reportId: number, note: string) {
+    return ApiService.fetchDataWithAxios<void>({
+        url: `/api/UserReportFavorite/${reportId}`,
+        method: 'put',
+        data: { note }
+    })
+}
+
 // Default export
 const ReportService = {
     getReportsList,
+    getReports: getReportsList, // Alias for compatibility
     getReportDetails,
     createReport,
     updateReport,
     deleteReport,
-    assignReportsToUser
+    getReportEmbedToken,
+    getReportEmbedTokenWithDatasetAccess,
+    getReportEmbedTokenWithRLS,
+    testDatasetAccess,
+    bulkApproveReports,
+    bulkApproveReportsNew,
+    bulkSetReportStatus,
+    bulkChangeReportCategory,
+    assignRolesToReport,
+    assignUsersToReport,
+    assignReportsToUser,
+    getCategories,
+    getCategoryById,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    setDefaultCategory,
+    assignRolesToCategory,
+    assignUsersToCategory,
+    getWorkspaces,
+    pinReport,
+    unpinReport,
+    getPinnedReports,
+    addToFavorites,
+    removeFromFavorites,
+    getFavoriteReports,
+    isReportFavorited,
+    updateFavoriteNote,
 }
 
 export default ReportService

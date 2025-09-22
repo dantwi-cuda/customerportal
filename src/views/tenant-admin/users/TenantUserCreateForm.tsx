@@ -41,7 +41,7 @@ const validationSchema = Yup.object().shape({
     roles: Yup.array()
         .of(Yup.string())
         .min(1, 'At least one role must be selected')
-        .required('Role is required'),
+        .required('Role is required'), // Array of role names
     status: Yup.string().required('Status is required'),
 })
 
@@ -81,7 +81,7 @@ const TenantUserCreateForm = () => {
     }, [tenantAdminUser])
 
     const tenantAssignableRolesOptions = tenantRoles.map((role) => ({
-        value: role.id, // Assuming role.id is the value to be stored
+        value: role.name, // Use role name instead of role.id
         label: role.name,
     }))
 
@@ -90,7 +90,7 @@ const TenantUserCreateForm = () => {
         email: '',
         password: '',
         confirmPassword: '',
-        roles: tenantRoles.length > 0 ? [tenantRoles[0].id] : [], // Default to first tenant role if available
+        roles: [], // Don't default to any role, let user select
         status: 'active',
     }
 
@@ -98,7 +98,10 @@ const TenantUserCreateForm = () => {
         values: typeof initialValues,
         { setSubmitting, setFieldError }: any,
     ) => {
+        console.log('Form submission started with values:', values)
         setSubmitting(true)
+
+        // Validation
         if (!tenantAdminUser || !(tenantAdminUser as any).tenantId) {
             toast.push(
                 <Notification title="Error" type="danger" duration={2500}>
@@ -109,22 +112,36 @@ const TenantUserCreateForm = () => {
             return
         }
 
+        if (!values.roles || values.roles.length === 0) {
+            setFieldError('roles', 'At least one role must be selected')
+            setSubmitting(false)
+            return
+        }
+
         const createUserDto: UserDto = {
             name: values.name,
             email: values.email,
-            status: values.status,
+            status: values.status === 'active' ? 'Active' : 'Inactive', // String status as shown in Postman
+            isActive: values.status === 'active', // Boolean isActive
             isCustomerUser: true,
-            isCCIUser: false,
-            tenantId: (tenantAdminUser as any).tenantId,
+            isCCIUser: false, // Tenant users are not CCI users
+            tenantId: Number((tenantAdminUser as any).tenantId), // Convert to number
+            roles: values.roles, // Include roles in user object as shown in Postman
+            createdAt: new Date().toISOString(), // Add createdAt timestamp
         }
 
         const createPayload: CreateUserRequest = {
             user: createUserDto,
             password: values.password,
-            roles: values.roles, // These should be role IDs
+            roles: values.roles, // These should be role names at the top level too
         }
 
+        console.log('=== PAYLOAD BEING SENT ===')
+        console.log(JSON.stringify(createPayload, null, 2))
+        console.log('=== END PAYLOAD ===')
+
         try {
+            console.log('Sending payload to API:', createPayload)
             await UserService.createUser(createPayload)
             toast.push(
                 <Notification
@@ -138,13 +155,32 @@ const TenantUserCreateForm = () => {
             navigate('/tenantportal/tenant/users')
         } catch (error: any) {
             console.error('Failed to create user:', error)
-            const errorMessage =
-                error.response?.data?.message || 'An unexpected error occurred.'
+            console.error('Error response:', error.response?.data)
+
+            let errorMessage = 'An unexpected error occurred.'
+
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+                // Handle specific error cases
+                if (errorMessage.includes('already taken')) {
+                    errorMessage = `The email address is already registered. Please use a different email address.`
+                }
+            } else if (error.response?.data?.errors) {
+                // Handle validation errors
+                const errors = error.response.data.errors
+                errorMessage = Object.values(errors).flat().join(', ')
+            } else if (error.response?.status === 400) {
+                errorMessage =
+                    'Invalid data provided. Please check all fields and try again.'
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+
             toast.push(
                 <Notification
                     title="Creation Failed"
                     type="danger"
-                    duration={2500}
+                    duration={5000}
                 >
                     {errorMessage}
                 </Notification>,
@@ -167,8 +203,26 @@ const TenantUserCreateForm = () => {
                 onSubmit={handleSubmit}
                 enableReinitialize // Important for when tenantRoles load
             >
-                {({ values, touched, errors, isSubmitting, setFieldValue }) => (
+                {({
+                    values,
+                    touched,
+                    errors,
+                    isSubmitting,
+                    setFieldValue,
+                    isValid,
+                }) => (
                     <Form>
+                        {/* Debug info - remove in production */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+                                <p>
+                                    <strong>Debug Info:</strong>
+                                </p>
+                                <p>Form Valid: {isValid ? 'Yes' : 'No'}</p>
+                                <p>Values: {JSON.stringify(values, null, 2)}</p>
+                                <p>Errors: {JSON.stringify(errors, null, 2)}</p>
+                            </div>
+                        )}
                         <FormContainer>
                             <Card className="p-6 mb-6">
                                 <h4 className="text-md font-semibold mb-4">
@@ -179,24 +233,54 @@ const TenantUserCreateForm = () => {
                                     invalid={!!(errors.name && touched.name)}
                                     errorMessage={errors.name as string}
                                 >
-                                    <Field
-                                        type="text"
-                                        name="name"
-                                        component={Input}
-                                        placeholder="Full Name"
-                                    />
+                                    <Field name="name">
+                                        {({ field, form }: any) => (
+                                            <Input
+                                                type="text"
+                                                placeholder="Full Name"
+                                                value={field.value}
+                                                onChange={(e) =>
+                                                    form.setFieldValue(
+                                                        field.name,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    form.setFieldTouched(
+                                                        field.name,
+                                                        true,
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                    </Field>
                                 </FormItem>
                                 <FormItem
                                     label="Email"
                                     invalid={!!(errors.email && touched.email)}
                                     errorMessage={errors.email as string}
                                 >
-                                    <Field
-                                        type="email"
-                                        name="email"
-                                        component={Input}
-                                        placeholder="user@example.com"
-                                    />
+                                    <Field name="email">
+                                        {({ field, form }: any) => (
+                                            <Input
+                                                type="email"
+                                                placeholder="user@example.com"
+                                                value={field.value}
+                                                onChange={(e) =>
+                                                    form.setFieldValue(
+                                                        field.name,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    form.setFieldTouched(
+                                                        field.name,
+                                                        true,
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                    </Field>
                                 </FormItem>
                             </Card>
 
@@ -211,12 +295,27 @@ const TenantUserCreateForm = () => {
                                     }
                                     errorMessage={errors.password as string}
                                 >
-                                    <Field
-                                        type="password"
-                                        name="password"
-                                        component={Input}
-                                        placeholder="Min 8 characters"
-                                    />
+                                    <Field name="password">
+                                        {({ field, form }: any) => (
+                                            <Input
+                                                type="password"
+                                                placeholder="Min 8 characters"
+                                                value={field.value}
+                                                onChange={(e) =>
+                                                    form.setFieldValue(
+                                                        field.name,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    form.setFieldTouched(
+                                                        field.name,
+                                                        true,
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                    </Field>
                                 </FormItem>
                                 <FormItem
                                     label="Confirm Password"
@@ -230,12 +329,27 @@ const TenantUserCreateForm = () => {
                                         errors.confirmPassword as string
                                     }
                                 >
-                                    <Field
-                                        type="password"
-                                        name="confirmPassword"
-                                        component={Input}
-                                        placeholder="Confirm password"
-                                    />
+                                    <Field name="confirmPassword">
+                                        {({ field, form }: any) => (
+                                            <Input
+                                                type="password"
+                                                placeholder="Confirm password"
+                                                value={field.value}
+                                                onChange={(e) =>
+                                                    form.setFieldValue(
+                                                        field.name,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    form.setFieldTouched(
+                                                        field.name,
+                                                        true,
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                    </Field>
                                 </FormItem>
                                 <FormItem
                                     label="Roles"

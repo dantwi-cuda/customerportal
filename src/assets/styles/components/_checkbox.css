@@ -19,26 +19,6 @@
       duration-150
       ease-in-out
       shadow-sm;
-  }
-
-  /* Custom styles for partial-checked state */
-  .partial-checked .checkbox-wrapper::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 10px;
-    height: 2px;
-    background-color: currentColor;
-    opacity: 1;
-    pointer-events: none;
-  }
-
-  /* Add a background color for indeterminate state */
-  .partial-checked .checkbox-wrapper {
-    background-color: rgba(59, 130, 246, 0.2); /* Light blue background */
-    border-color: rgb(59, 130, 246); /* Blue border */
   
     &:checked {
       @apply bg-current ring-current border-current;

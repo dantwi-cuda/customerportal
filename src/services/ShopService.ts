@@ -4,17 +4,30 @@ import type {
     Shop, 
     ShopDto, 
     ShopFilters,
+    ShopListParams,
+    ShopPaginatedResponse,
     ShopKpi,
+    ShopKpiRecentViewDto,
     AssignProgramsRequest,
     AssignUsersRequest 
 } from '@/@types/shop'
 
 // Shop APIs
-export async function getShopsList(filters?: ShopFilters) {
-    return ApiService.fetchDataWithAxios<Shop[]>({
+export async function getShopsList(params?: ShopListParams) {
+    return ApiService.fetchDataWithAxios<ShopPaginatedResponse>({
         url: '/api/Shop',
         method: 'get',
-        params: filters
+        params: {
+            SearchText: params?.searchText,
+            City: params?.city,
+            State: params?.state,
+            Program: params?.program,
+            IsActive: params?.isActive,
+            StartDate: params?.startDate,
+            EndDate: params?.endDate,
+            PageNumber: params?.page || 1,
+            PageSize: params?.pageSize || 20
+        }
     })
 }
 
@@ -29,7 +42,7 @@ export async function createShop(shop: ShopDto) {
     return ApiService.fetchDataWithAxios<Shop>({
         url: '/api/Shop',
         method: 'post',
-        data: shop
+        data: shop as any
     })
 }
 
@@ -37,7 +50,7 @@ export async function updateShop(shopId: number, shop: ShopDto) {
     return ApiService.fetchDataWithAxios<Shop>({
         url: `/api/Shop/${shopId}`,
         method: 'put',
-        data: shop
+        data: shop as any
     })
 }
 
@@ -66,7 +79,7 @@ export async function assignPrograms(shopId: number, request: AssignProgramsRequ
     return ApiService.fetchDataWithAxios<void>({
         url: `/api/Shop/${shopId}/programs`,
         method: 'post',
-        data: request
+        data: request as any
     })
 }
 
@@ -74,13 +87,20 @@ export async function assignUsers(shopId: number, request: AssignUsersRequest) {
     return ApiService.fetchDataWithAxios<void>({
         url: `/api/Shop/${shopId}/users`,
         method: 'post',
-        data: request
+        data: request as any
     })
 }
 
 export async function getShopKpis(shopId: number) {
     return ApiService.fetchDataWithAxios<ShopKpi[]>({
         url: `/api/Shop/${shopId}/kpis`,
+        method: 'get'
+    })
+}
+
+export async function getShopKpisRecent(shopId: number) {
+    return ApiService.fetchDataWithAxios<ShopKpiRecentViewDto[]>({
+        url: `/api/ShopKpi/shop/${shopId}/recent`,
         method: 'get'
     })
 }
@@ -96,6 +116,13 @@ export async function assignShopsToUser(userId: string, shopIds: number[]) {
     })
 }
 
+export async function getShopsByProgram(programId: number) {
+    return ApiService.fetchDataWithAxios<Shop[]>({
+        url: `/api/Shop/program/${programId}`,
+        method: 'get'
+    })
+}
+
 // Default export
 const ShopService = {
     getShopsList,
@@ -108,7 +135,9 @@ const ShopService = {
     assignPrograms,
     assignUsers,
     getShopKpis,
-    assignShopsToUser
+    getShopKpisRecent,
+    assignShopsToUser,
+    getShopsByProgram
 }
 
 export default ShopService

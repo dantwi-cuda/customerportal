@@ -51,6 +51,7 @@ const ShopKPIListPage = () => {
     const [searchText, setSearchText] = useState('')
     const [selectedShop, setSelectedShop] = useState<number | null>(() => {
         const saved = localStorage.getItem('shopKPI.selectedShop')
+        // Return the saved value but we'll validate it once shops are loaded
         return saved ? parseInt(saved, 10) : null
     })
     const [selectedDate, setSelectedDate] = useState<{
@@ -151,12 +152,30 @@ const ShopKPIListPage = () => {
 
     // Load KPIs when shop or date selection changes
     useEffect(() => {
-        if (selectedShop && selectedDate) {
+        // Only load KPIs if we have a valid shop that exists in our shops list
+        const shopExists =
+            selectedShop &&
+            shops.length > 0 &&
+            shops.find((shop) => shop.id === selectedShop)
+
+        if (shopExists && selectedDate) {
             loadKpis()
         } else {
             setKpis([])
+            // If shop is selected but doesn't exist in the list, clear it
+            if (
+                selectedShop &&
+                shops.length > 0 &&
+                !shops.find((shop) => shop.id === selectedShop)
+            ) {
+                console.warn(
+                    `Selected shop ${selectedShop} not found in shops list, clearing selection`,
+                )
+                setSelectedShop(null)
+                localStorage.removeItem('shopKPI.selectedShop')
+            }
         }
-    }, [selectedShop, selectedDate]) // Reset edited values when KPIs change
+    }, [selectedShop, selectedDate, shops]) // Reset edited values when KPIs change
     useEffect(() => {
         setEditedValues({})
         setHasChanges(false)
@@ -187,10 +206,28 @@ const ShopKPIListPage = () => {
     }, [selectedDate])
     const loadShops = async () => {
         try {
-            const shopsData = await ShopService.getShopsList()
-            setShops(shopsData.filter((shop) => shop.isActive))
+            const shopsResponse = await ShopService.getShopsList()
+            // Extract shops array from the paginated response
+            const shopsData = shopsResponse?.shops || []
+            const activeShops = shopsData.filter((shop) => shop.isActive)
+            setShops(activeShops)
+
+            // Validate that the selected shop still exists in the active shops
+            if (
+                selectedShop &&
+                !activeShops.find((shop) => shop.id === selectedShop)
+            ) {
+                console.warn(
+                    `Selected shop ${selectedShop} is no longer available, clearing selection`,
+                )
+                setSelectedShop(null)
+                localStorage.removeItem('shopKPI.selectedShop')
+            }
         } catch (error) {
             console.error('Error loading shops:', error)
+            // Clear selected shop if shops failed to load
+            setSelectedShop(null)
+            localStorage.removeItem('shopKPI.selectedShop')
             toast.push(
                 <Notification title="Error" type="danger">
                     Failed to load shops
@@ -211,10 +248,22 @@ const ShopKPIListPage = () => {
     const loadKpis = async () => {
         if (!selectedShop || !selectedDate) return
 
+        // Verify that the selected shop exists in our shops list
+        const shopExists = shops.find((shop) => shop.id === selectedShop)
+        if (!shopExists) {
+            console.warn(
+                `Cannot load KPIs: Shop ${selectedShop} not found in shops list`,
+            )
+            setKpis([])
+            return
+        }
+
         console.log(
             'Loading KPIs for shop:',
             selectedShop,
-            'year:',
+            '(',
+            shopExists.name,
+            ') year:',
             selectedDate.year,
             'month:',
             selectedDate.month,
@@ -238,7 +287,7 @@ const ShopKPIListPage = () => {
             console.error('Error loading KPIs:', error)
             toast.push(
                 <Notification title="Error" type="danger">
-                    Failed to load KPIs
+                    Failed to load KPIs for {shopExists.name}
                 </Notification>,
             )
             setKpis([])

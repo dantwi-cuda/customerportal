@@ -167,43 +167,54 @@ const ShopEditPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleBack}
+                        >
+                            Back to Shops
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">
+                                {isNewShop
+                                    ? 'Create New Shop'
+                                    : `Edit Shop: ${shop.name}`}
+                            </h4>
+                            <p className="text-gray-600 text-sm">
+                                {isNewShop
+                                    ? 'Set up a new shop in the system'
+                                    : 'Update shop information and settings'}
+                            </p>
+                        </div>
+                    </div>
                     <Button
-                        size="sm"
-                        variant="plain"
-                        icon={<HiOutlineArrowLeft />}
-                        onClick={handleBack}
+                        variant="solid"
+                        icon={<HiOutlineSave />}
+                        onClick={handleSave}
+                        loading={saving}
+                        className="w-full sm:w-auto"
                     >
-                        Back to Shops
+                        {isNewShop ? 'Create Shop' : 'Save Changes'}
                     </Button>
-                    <h3 className="text-lg font-medium">
-                        {isNewShop
-                            ? 'Create New Shop'
-                            : `Edit Shop: ${shop.name}`}
-                    </h3>
                 </div>
-                <Button
-                    size="sm"
-                    variant="solid"
-                    icon={<HiOutlineSave />}
-                    onClick={handleSave}
-                    loading={saving}
-                >
-                    {isNewShop ? 'Create Shop' : 'Save Changes'}
-                </Button>
-            </div>
+            </Card>
 
-            {loading ? (
-                <Card className="text-center p-8">
-                    <div>Loading shop details...</div>
-                </Card>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                        <Card>
-                            <div className="p-6">
+            {/* Content Card */}
+            <Card>
+                {loading ? (
+                    <div className="text-center p-8">
+                        <div>Loading shop details...</div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+                        <div className="lg:col-span-2">
+                            <div className="mb-6">
                                 <h4 className="text-base font-semibold mb-4">
                                     Shop Information
                                 </h4>
@@ -299,12 +310,10 @@ const ShopEditPage = () => {
                                     </div>
                                 </FormContainer>
                             </div>
-                        </Card>
-                    </div>
+                        </div>
 
-                    <div>
-                        <Card>
-                            <div className="p-6">
+                        <div>
+                            <div className="mb-6">
                                 <h4 className="text-base font-semibold mb-4">
                                     Shop Status
                                 </h4>
@@ -334,11 +343,11 @@ const ShopEditPage = () => {
                                     </FormItem>
                                 </FormContainer>
                             </div>
-                        </Card>
+                        </div>
 
                         {shop.programNames && shop.programNames.length > 0 && (
-                            <Card className="mt-6">
-                                <div className="p-6">
+                            <div className="mt-6">
+                                <div className="mb-6">
                                     <h4 className="text-base font-semibold mb-4">
                                         Current Programs
                                     </h4>
@@ -357,11 +366,11 @@ const ShopEditPage = () => {
                                         )}
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
                         )}
                     </div>
-                </div>
-            )}
+                )}
+            </Card>
         </div>
     )
 }

@@ -55,11 +55,14 @@ export async function verifyMfaCode(email: string, code: string) {
     })
 }
 
-export async function apiRefreshToken(refreshToken: string) {
+export async function apiRefreshToken(refreshToken: string, currentToken?: string) {
     return ApiService.fetchDataWithAxios<SignInResponse>({
         url: endpointConfig.auth.refreshToken,
         method: 'post',
-        data: { refreshToken },
+        data: { 
+            token: currentToken || '', 
+            refreshToken 
+        },
     })
 }
 

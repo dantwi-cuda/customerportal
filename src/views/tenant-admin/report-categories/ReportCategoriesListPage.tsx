@@ -40,6 +40,9 @@ const ReportCategoriesListPage = () => {
     const [categories, setCategories] = useState<ReportCategory[]>([])
     const [loading, setLoading] = useState(false)
     const [searchText, setSearchText] = useState('')
+    const [updatingCategories, setUpdatingCategories] = useState<Set<number>>(
+        new Set(),
+    )
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1)
@@ -147,13 +150,31 @@ const ReportCategoriesListPage = () => {
     }
 
     const handleToggleEnabled = async (category: ReportCategory) => {
+        // Prevent multiple simultaneous updates for the same category
+        if (updatingCategories.has(category.id)) return
+
         try {
+            // Add category to updating set
+            setUpdatingCategories((prev) => new Set([...prev, category.id]))
+
+            // Create updated category with toggled isActive status
             const updatedCategory = {
                 ...category,
                 isActive: !category.isActive,
             }
+
+            // Update via API
             await ReportService.updateCategory(category.id, updatedCategory)
-            await fetchCategories()
+
+            // Update local state immediately for better UX
+            setCategories((prevCategories) =>
+                prevCategories.map((cat) =>
+                    cat.id === category.id
+                        ? { ...cat, isActive: !cat.isActive }
+                        : cat,
+                ),
+            )
+
             toast.push(
                 <Notification
                     type="success"
@@ -172,6 +193,13 @@ const ReportCategoriesListPage = () => {
                         : 'An unknown error occurred'}
                 </Notification>,
             )
+        } finally {
+            // Remove category from updating set
+            setUpdatingCategories((prev) => {
+                const newSet = new Set(prev)
+                newSet.delete(category.id)
+                return newSet
+            })
         }
     }
 
@@ -226,30 +254,38 @@ const ReportCategoriesListPage = () => {
         )
     }
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <h3 className="text-lg font-medium text-center md:text-left">
-                    Report Categories
-                </h3>
-                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-end gap-2 w-full md:w-auto">
-                    <Input
-                        prefix={<HiOutlineSearch className="text-lg" />}
-                        placeholder="Search categories..."
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full sm:w-60"
-                    />
-                    <Button
-                        size="sm"
-                        variant="solid"
-                        icon={<HiOutlinePlus />}
-                        onClick={handleCreateCategory}
-                        className="w-full sm:w-auto"
-                    >
-                        Create Category
-                    </Button>{' '}
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h4 className="mb-1">Report Categories</h4>
+                        <p className="text-gray-600 text-sm">
+                            Manage report categories and their settings
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <Input
+                            prefix={<HiOutlineSearch className="text-lg" />}
+                            placeholder="Search categories..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            className="w-full sm:w-60"
+                        />
+                        <Button
+                            size="sm"
+                            variant="solid"
+                            icon={<HiOutlinePlus />}
+                            onClick={handleCreateCategory}
+                            className="w-full sm:w-auto"
+                        >
+                            Create Category
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            </Card>
+
+            {/* Content Card */}
             <Card className="px-0 sm:px-4">
                 {loading ? (
                     <div className="flex justify-center items-center py-8">
@@ -344,7 +380,13 @@ const ReportCategoriesListPage = () => {
                                                             category,
                                                         )
                                                     }
-                                                />{' '}
+                                                    disabled={
+                                                        loading ||
+                                                        updatingCategories.has(
+                                                            category.id,
+                                                        )
+                                                    }
+                                                />
                                             </td>
                                             <td className="px-4 sm:px-6 py-4">
                                                 <div className="flex justify-end">
@@ -361,6 +403,9 @@ const ReportCategoriesListPage = () => {
                                                         <Dropdown.Item
                                                             className="sm:hidden"
                                                             eventKey="toggle"
+                                                            disabled={updatingCategories.has(
+                                                                category.id,
+                                                            )}
                                                             onClick={() =>
                                                                 handleToggleEnabled(
                                                                     category,

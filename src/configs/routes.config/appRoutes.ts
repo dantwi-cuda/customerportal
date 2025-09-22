@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { END_USER, TENANT_ADMIN } from '@/constants/roles.constant'
+import { END_USER, TENANT_ADMIN, CS_ADMIN, CS_USER } from '@/constants/roles.constant'
 import type { Routes } from '@/@types/routes'
 
 /**
@@ -19,6 +19,14 @@ const appRoutes: Routes = [    // Dashboard
         path: '/app/tenant-dashboard',
         component: lazy(() => import('@/views/app/tenant-dashboard/TenantDashboardPage')),
         authority: [TENANT_ADMIN, END_USER],
+    },
+    
+    // Main Reports page for tenant portal navigation
+    {
+        key: 'reports',
+        path: '/reports',
+        component: lazy(() => import('@/views/reports/ReportsMainPage')),
+        authority: [TENANT_ADMIN, END_USER, 'report.read', 'report.all'],
     },
     
     // Reports section
@@ -68,24 +76,48 @@ const appRoutes: Routes = [    // Dashboard
     },
       // Accounting routes
     {
+        key: 'accounting',
+        path: '/accounting',
+        component: lazy(() => import('@/views/accounting/AccountingMainPage')),
+        authority: [TENANT_ADMIN, END_USER],
+    },
+    {
         key: 'accounting.chartOfAccounts',
         path: '/accounting/chart-of-accounts',
         component: lazy(() => import('@/views/dashboard/Dashboard')), // Placeholder - replace when component exists
         authority: [TENANT_ADMIN, END_USER],
     },
     {
+        key: 'accounting.shopChartOfAccount',
+        path: '/accounting/shop-chart-of-account',
+        component: lazy(() => import('@/views/accounting/ShopChartOfAccountPage')),
+        authority: [TENANT_ADMIN, END_USER],
+    },
+    {
         key: 'accounting.uploadGL',
         path: '/accounting/upload-gl',
-        component: lazy(() => import('@/views/dashboard/Dashboard')), // Placeholder - replace when component exists
+        component: lazy(() => import('@/views/accounting/UploadGeneralLedgerPageComplete')),
         authority: [TENANT_ADMIN, END_USER],
     },
     
     // Subscriptions
     {
-        key: 'subscriptions',
+        key: 'app.subscriptions',
         path: '/subscriptions',
-        component: lazy(() => import('@/views/dashboard/Dashboard')), // Placeholder - replace when component exists
-        authority: [TENANT_ADMIN, END_USER],
+        component: lazy(() => import('@/views/subscriptions/SubscriptionManagementPage')),
+        authority: [TENANT_ADMIN, END_USER, 'subscription.view', 'subscription.all'],
+    },
+    {
+        key: 'app.subscriptions.create',
+        path: '/subscriptions/create',
+        component: lazy(() => import('@/views/subscriptions/SubscriptionWizardPage')),
+        authority: [TENANT_ADMIN, 'subscription.create', 'subscription.all'],
+    },
+    {
+        key: 'app.subscriptions.edit',
+        path: '/subscriptions/edit/:id',
+        component: lazy(() => import('@/views/subscriptions/SubscriptionWizardPage')),
+        authority: [TENANT_ADMIN, 'subscription.edit', 'subscription.all'],
     },
     
     // Reports (user-facing)
@@ -112,6 +144,12 @@ const appRoutes: Routes = [    // Dashboard
         authority: [TENANT_ADMIN, END_USER],
     },
     {
+        key: 'app.programs.details',
+        path: '/app/programs/:programId/details',
+        component: lazy(() => import('@/views/programs/ProgramDetailsPage')),
+        authority: [TENANT_ADMIN, END_USER],
+    },
+    {
         key: 'app.programs.add',
         path: '/app/programs/add',
         component: lazy(() => import('@/views/programs/ProgramForm')),
@@ -134,6 +172,66 @@ const appRoutes: Routes = [    // Dashboard
         path: '/app/programs/:programId/assignments',
         component: lazy(() => import('@/views/programs/ProgramAssignmentsPage')),
         authority: [TENANT_ADMIN, END_USER],
+    },
+    
+    // Program Types Management
+    {
+        key: 'app.program-types',
+        path: '/app/program-types',
+        component: lazy(() => import('@/views/programs/ProgramTypesListPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'app.program-types.create',
+        path: '/app/program-types/create',
+        component: lazy(() => import('@/views/programs/CreateEditProgramTypePage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'app.program-types.edit',
+        path: '/app/program-types/edit/:id',
+        component: lazy(() => import('@/views/programs/CreateEditProgramTypePage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    
+    // Program Categories Management
+    {
+        key: 'app.program-categories',
+        path: '/app/program-categories',
+        component: lazy(() => import('@/views/programs/ProgramCategoriesListPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'app.program-categories.add',
+        path: '/app/program-categories/add',
+        component: lazy(() => import('@/views/programs/CreateEditProgramCategoryPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'app.program-categories.edit',
+        path: '/app/program-categories/edit/:id',
+        component: lazy(() => import('@/views/programs/CreateEditProgramCategoryPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    
+    // Profile management
+    {
+        key: 'app.profile',
+        path: '/app/profile',
+        component: lazy(() => import('@/views/profile/ProfilePage')),
+        authority: [TENANT_ADMIN, END_USER],
+    },
+    {
+        key: 'app.account-settings',
+        path: '/app/account-settings',
+        component: lazy(() => import('@/views/account-settings/AccountSettingsPage')),
+        authority: [TENANT_ADMIN],
+    },
+    {
+        key: 'app.activity-log',
+        path: '/app/activity-log',
+        component: lazy(() => import('@/views/activity-log/ActivityLogPage')),
+        authority: [TENANT_ADMIN],
     },
     
     // Settings (Tenant-Admin only)

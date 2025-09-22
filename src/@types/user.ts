@@ -3,13 +3,14 @@ export interface UserDto {
     id?: string;
     email: string;
     name: string;
-    status?: string;
+    status?: string; // String status like "Active" or "Inactive"
+    isActive?: boolean; // Boolean isActive to match API
     isCustomerUser: boolean;
     isCCIUser: boolean;
     createdAt?: string;
     lastLoginAt?: string;
-    roles?: string[];
-    tenantId?: string; // Added tenantId
+    roles?: string[]; // Include roles in user object
+    tenantId?: string | number; // Allow both string and number for tenantId
 }
 
 export interface CreateUserRequest {

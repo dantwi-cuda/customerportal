@@ -40,8 +40,9 @@ export interface Workspace {
 export interface WorkspaceDto extends Workspace {}
 
 export interface CreateWorkspaceDto {
-    workspaceId: string; // User-defined Workspace ID
+    workspaceID: string; // PowerBI GUID ID - Changed to match API expectation
     name: string;
+    systemName?: string; // Added to match API payload structure
     description?: string;
     // status: 'ACTIVE' | 'INACTIVE'; // This might be handled by isActive or set by backend default
     isActive?: boolean; // To control active status on creation, defaults to true if not provided by form
@@ -84,4 +85,104 @@ export interface WorkspaceCustomerAssignment {
     customerName: string;
     assignedAt: string; // ISO date string
     isAssignedToCustomerActive?: boolean; // Whether this workspace is active for this customer
+}
+
+// Import reports response types
+export interface ImportReportsResponse {
+    success: boolean;
+    message?: string;
+    processedReports: number;
+    newReports: number;
+    updatedReports: number;
+    deletedReports: number;
+    errors?: string[];
+}
+
+// Last import information from API
+export interface LastImport {
+    id: number;
+    importedAt: string;
+    importedByUserId: string;
+    importedByUserName: string;
+    tenantId: number;
+    tenantName: string;
+    success: boolean;
+    message: string;
+    processedReports: number;
+    newReports: number;
+    updatedReports: number;
+    deletedReports: number;
+    upsertedCustomerReports: number;
+    deletedCustomerReports: number;
+    errorCount: number;
+    duration: string;
+}
+
+// Import status tracking
+export interface WorkspaceImportStatus {
+    workspaceId: string;
+    workspaceName?: string;
+    customerWorkspaceName?: string;
+    status: 'idle' | 'importing' | 'success' | 'error';
+    lastImport?: string;
+    response?: ImportReportsResponse;
+}
+
+// Duration object from API
+export interface Duration {
+    ticks: number;
+    days: number;
+    hours: number;
+    milliseconds: number;
+    microseconds: number;
+    nanoseconds: number;
+    minutes: number;
+    seconds: number;
+    totalDays: number;
+    totalHours: number;
+    totalMilliseconds: number;
+    totalMicroseconds: number;
+    totalNanoseconds: number;
+    totalMinutes: number;
+    totalSeconds: number;
+}
+
+// Report Import Log from API
+export interface ReportImportLog {
+    id: number;
+    importedAt: string;
+    importedByUserId: string;
+    importedByUserName: string;
+    tenantId: number;
+    tenantName: string;
+    workspaceID: number;
+    workspaceName: string;
+    success: boolean;
+    message: string;
+    processedReports: number;
+    newReports: number;
+    updatedReports: number;
+    deletedReports: number;
+    upsertedCustomerReports: number;
+    deletedCustomerReports: number;
+    errorCount: number;
+    duration: Duration;
+}
+
+// Paginated response for import logs
+export interface ReportImportLogResponse {
+    importLogs: ReportImportLog[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+}
+
+// Extended workspace interface for UI state
+export interface DisplayWorkspace extends WorkspaceDto {
+    assignedToTenant?: boolean;
+    isAssignedToCustomerActive?: boolean;
+    customerWorkspaceName?: string;
+    importStatus?: WorkspaceImportStatus;
+    lastImport?: LastImport;
 }

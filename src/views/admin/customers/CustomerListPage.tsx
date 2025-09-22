@@ -21,6 +21,7 @@ import {
     HiOutlineDotsVertical,
     HiOutlinePlus,
     HiOutlineLogin,
+    HiOutlineUserAdd,
 } from 'react-icons/hi'
 import * as CustomerService from '@/services/CustomerService'
 import { useNavigate } from 'react-router-dom'
@@ -51,16 +52,19 @@ const CustomersListPage = () => {
 
     useEffect(() => {
         fetchCustomers()
-    }, []) // Define filteredCustomers at the component level
+    }, [])
+
+    // Define filteredCustomers at the component level
     const filteredCustomers = customers.filter(
         (customer) =>
             customer.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-            customer.legalName
+            customer.subdomain
                 ?.toLowerCase()
                 .includes(searchText.toLowerCase()) ||
             customer.domainUrl
                 ?.toLowerCase()
-                .includes(searchText.toLowerCase()),
+                .includes(searchText.toLowerCase()) ||
+            customer.address?.toLowerCase().includes(searchText.toLowerCase()),
     )
     // Calculate pagination
     const totalCustomers = filteredCustomers.length
@@ -190,6 +194,10 @@ const CustomersListPage = () => {
             )
         }
     }
+
+    const handleAddAdminUser = (customer: CustomerDetailsResponse) => {
+        navigate(`/admin/customers/${customer.id}/add-admin-user`)
+    }
     const columns = [
         {
             key: 'name',
@@ -206,7 +214,9 @@ const CustomersListPage = () => {
                     <div className="ml-2">
                         <div className="font-semibold">{record.name}</div>
                         <div className="text-xs text-gray-500">
-                            {record.legalName}
+                            {record.subdomain ||
+                                record.domainUrl ||
+                                'No subdomain'}
                         </div>
                     </div>
                 </div>
@@ -214,10 +224,18 @@ const CustomersListPage = () => {
         },
         {
             key: 'domain',
-            dataIndex: 'domainUrl',
-            title: 'Domain',
+            dataIndex: 'subdomain',
+            title: 'Subdomain',
             render: (_: any, record: CustomerDetailsResponse) => (
-                <span>{record.domainUrl || 'N/A'}</span>
+                <span>{record.subdomain || record.domainUrl || 'N/A'}</span>
+            ),
+        },
+        {
+            key: 'address',
+            dataIndex: 'address',
+            title: 'Address',
+            render: (_: any, record: CustomerDetailsResponse) => (
+                <span>{record.address || 'N/A'}</span>
             ),
         },
         {
@@ -259,6 +277,8 @@ const CustomersListPage = () => {
                                     handleAccessCustomerPortal(record)
                                 } else if (key === 'edit') {
                                     handleEditCustomer(record)
+                                } else if (key === 'add-admin') {
+                                    handleAddAdminUser(record)
                                 } else if (key === 'delete') {
                                     confirmDeleteCustomer(record)
                                 }
@@ -277,6 +297,12 @@ const CustomersListPage = () => {
                                 <Space>
                                     <HiOutlinePencilAlt />
                                     <span>Edit</span>
+                                </Space>
+                            </Menu.MenuItem>
+                            <Menu.MenuItem eventKey="add-admin">
+                                <Space>
+                                    <HiOutlineUserAdd />
+                                    <span>Add Admin User</span>
                                 </Space>
                             </Menu.MenuItem>
                             {hasAdminPermission && (
@@ -298,7 +324,7 @@ const CustomersListPage = () => {
         <div>
             <div className="container mx-auto">
                 <div className="mb-4 flex items-center justify-between">
-                    <div></div>{' '}
+                    <h3>Customer Management</h3>
                     <Button
                         variant="solid"
                         size="sm"

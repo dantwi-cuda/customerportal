@@ -12,20 +12,21 @@ import type {
 type Auth = {
     authenticated: boolean
     user: User
-    signIn: (values: SignInCredential) => AuthResult
-    signUp: (values: SignUpCredential) => AuthResult
+    signIn: (values: SignInCredential) => Promise<AuthResult>
+    signUp: (values: SignUpCredential) => Promise<AuthResult>
     signOut: () => void
     oAuthSignIn: (
         callback: (payload: OauthSignInCallbackPayload) => void,
     ) => void
-    verifyMfa: (email: string, code: string) => MfaVerifyResponse // Changed to MfaVerifyResponse
+    verifyMfa: (email: string, code: string) => Promise<MfaVerifyResponse>
     isCustomerPortal: boolean
     customerName: string
-    accessCustomerPortal: (customerId: string) => AuthResult // Changed to AuthResult
+    accessCustomerPortal: (customerId: string) => Promise<AuthResult>
     exitCustomerPortal: () => void
+    refreshAccessToken: () => Promise<boolean>
 }
 
-const defaultFunctionPlaceHolder = async (): AuthResult => {
+const defaultFunctionPlaceHolder = async (): Promise<AuthResult> => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     return {
         status: '' as AuthRequestStatus,
@@ -42,12 +43,17 @@ const defaultOAuthSignInPlaceHolder = (
     })
 }
 
-const defaultMfaVerifyPlaceholder = async (): MfaVerifyResponse => {
+const defaultMfaVerifyPlaceholder = async (): Promise<MfaVerifyResponse> => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     return {
         status: '' as AuthRequestStatus,
         message: '',
     }
+}
+
+const defaultRefreshTokenPlaceholder = async (): Promise<boolean> => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    return false
 }
 
 const AuthContext = createContext<Auth>({
@@ -62,6 +68,7 @@ const AuthContext = createContext<Auth>({
     customerName: '',
     accessCustomerPortal: defaultFunctionPlaceHolder,
     exitCustomerPortal: () => {},
+    refreshAccessToken: defaultRefreshTokenPlaceholder,
 })
 
 export default AuthContext

@@ -15,6 +15,7 @@ import {
     unpinReport,
 } from '@/services/ReportService'
 import { usePermissionStore } from '@/store/permissionStore'
+import { PIN_REPORTS } from '@/constants/report-permissions.constant'
 import type { Report, ReportCategory, ReportWorkspace } from '@/@types/report'
 
 const Reports = () => {
@@ -28,7 +29,7 @@ const Reports = () => {
     const [selectedWorkspace, setSelectedWorkspace] = useState<string>('')
 
     const { hasPermission } = usePermissionStore()
-    const canPinReports = hasPermission('pin_reports')
+    const canPinReports = hasPermission(PIN_REPORTS)
 
     // Fetch initial data
     useEffect(() => {

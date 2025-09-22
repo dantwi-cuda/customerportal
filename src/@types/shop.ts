@@ -7,8 +7,23 @@ export interface Shop {
     state: string
     country: string
     isActive: boolean
+    businessKey?: string
+    parentID?: number | null
+    isTenantActive?: boolean
+    isTenantDeleted?: boolean
+    tenantAssignedAt?: string
+    tenantAssignedBy?: string
     programNames: string[]
+    assignedUserNames?: string[]
     kpIs: ShopKpi[]
+}
+
+export interface ShopPaginatedResponse {
+    shops: Shop[]
+    totalCount: number
+    pageNumber: number
+    pageSize: number
+    totalPages: number
 }
 
 export interface ShopKpi {
@@ -18,6 +33,23 @@ export interface ShopKpi {
     kpiValue: number
     kpiTarget: number
     lastUpdated: string
+}
+
+export interface ShopKpiRecentViewDto {
+    id: number
+    shopAttributeId: number
+    shopId: number
+    kpiYear: number
+    kpiMonth: number
+    kpiValue: number | null
+    kpiGoal: number | null
+    kpiThreshold: number | null
+    rowModifiedBy: string | null
+    rowModifiedOn: string | null
+    kpibmsValue: number | null
+    attributeName: string | null
+    categoryDescription: string | null
+    unitType: string | null
 }
 
 export interface ShopDto {
@@ -38,8 +70,16 @@ export interface ShopFilters {
     city?: string
     state?: string
     program?: string
+    isActive?: boolean
     startDate?: string
     endDate?: string
+}
+
+export interface ShopListParams extends ShopFilters {
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
 }
 
 export interface AssignProgramsRequest {
@@ -48,13 +88,6 @@ export interface AssignProgramsRequest {
 
 export interface AssignUsersRequest {
     userIds: number[]
-}
-
-export interface ShopListParams extends ShopFilters {
-    page?: number
-    pageSize?: number
-    sortBy?: string
-    sortOrder?: 'asc' | 'desc'
 }
 
 // Shop Attribute Types

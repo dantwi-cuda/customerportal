@@ -59,16 +59,22 @@ export interface SupplierPart {
     sizeUnitOfSale: string
 }
 
+export interface BulkUploadResponse {
+    jobID: number
+    message: string
+}
+
 export interface BulkUploadJob {
-    jobId: string
-    status: 'pending' | 'processing' | 'completed' | 'failed'
-    type: 'masterparts' | 'supplierparts'
+    jobID: number
+    status: 'Pending' | 'Processing' | 'Completed' | 'Failed' | 'Cancelled'
+    percentageComplete: number
     fileName: string
     totalRecords: number
     processedRecords: number
-    errorRecords: number
+    successfulRecords: number
+    failedRecords: number
     createdAt: string
-    completedAt?: string
+    // ... any other fields
 }
 
 export interface BulkUploadError {

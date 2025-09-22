@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { Table } from '@/components/ui'
 import Dropdown from '@/components/ui/Dropdown'
+import Tag from '@/components/ui/Tag'
 import EllipsisButton from '@/components/shared/EllipsisButton'
 import {
     HiPencil,
@@ -9,10 +10,10 @@ import {
     HiDocumentReport,
 } from 'react-icons/hi'
 import { UserDto } from '@/@types/user'
-import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/shared'
 import type { DropdownRef } from '@/components/ui/Dropdown'
 import type { MouseEvent, SyntheticEvent } from 'react'
+import classNames from '@/utils/classNames'
 
 interface TenantUsersTableProps {
     users: UserDto[]
@@ -23,11 +24,11 @@ interface TenantUsersTableProps {
     // onStatusChange: (userId: string, newStatus: string) => void; // Future enhancement
 }
 
-const statusColorMap: Record<string, string> = {
-    active: 'bg-emerald-500',
-    inactive: 'bg-red-500',
-    pending: 'bg-amber-500',
-    default: 'bg-gray-400',
+const userStatus: Record<string, { label: string; className: string }> = {
+    active: { label: 'Active', className: 'bg-emerald-200' },
+    inactive: { label: 'Inactive', className: 'bg-red-200' },
+    pending: { label: 'Pending', className: 'bg-amber-200' },
+    default: { label: 'Unknown', className: 'bg-gray-200' },
 }
 
 const TenantUsersTable: React.FC<TenantUsersTableProps> = ({
@@ -68,17 +69,20 @@ const TenantUsersTable: React.FC<TenantUsersTableProps> = ({
                                 {user.roles?.join(', ') || 'No roles assigned'}
                             </Table.Td>
                             <Table.Td>
-                                <Badge
-                                    className={
-                                        statusColorMap[
+                                <Tag
+                                    className={classNames(
+                                        userStatus[
                                             user.status?.toLowerCase() ||
                                                 'default'
-                                        ] || statusColorMap.default
-                                    }
+                                        ]?.className ||
+                                            userStatus.default.className,
+                                    )}
                                 >
-                                    {user.status || 'Unknown'}
-                                </Badge>
-                            </Table.Td>{' '}
+                                    {userStatus[
+                                        user.status?.toLowerCase() || 'default'
+                                    ]?.label || userStatus.default.label}
+                                </Tag>
+                            </Table.Td>
                             <Table.Td>
                                 {user.lastLoginAt
                                     ? new Date(

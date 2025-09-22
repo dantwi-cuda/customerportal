@@ -1,13 +1,14 @@
 import React, { useRef } from 'react'
 import { Table } from '@/components/ui'
 import Dropdown from '@/components/ui/Dropdown'
+import Tag from '@/components/ui/Tag'
 import EllipsisButton from '@/components/shared/EllipsisButton'
 import { HiPencil, HiTrash } from 'react-icons/hi'
-import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/shared'
 import type { Manufacturer } from '@/@types/parts'
 import type { DropdownRef } from '@/components/ui/Dropdown'
 import type { MouseEvent, SyntheticEvent } from 'react'
+import classNames from '@/utils/classNames'
 
 interface ManufacturersTableProps {
     manufacturers: Manufacturer[]
@@ -15,6 +16,12 @@ interface ManufacturersTableProps {
     onEdit: (manufacturer: Manufacturer) => void
     onDelete: (manufacturerId: number) => void
 }
+
+const manufacturerStatus: Record<string, { label: string; className: string }> =
+    {
+        active: { label: 'Active', className: 'bg-emerald-200' },
+        inactive: { label: 'Inactive', className: 'bg-red-200' },
+    }
 
 const ManufacturersTable: React.FC<ManufacturersTableProps> = ({
     manufacturers,
@@ -72,17 +79,19 @@ const ManufacturersTable: React.FC<ManufacturersTableProps> = ({
                                 )}
                             </Table.Td>
                             <Table.Td>
-                                <Badge
-                                    className={
+                                <Tag
+                                    className={classNames(
                                         manufacturer.isActive
-                                            ? 'bg-emerald-500'
-                                            : 'bg-red-500'
-                                    }
+                                            ? manufacturerStatus.active
+                                                  .className
+                                            : manufacturerStatus.inactive
+                                                  .className,
+                                    )}
                                 >
                                     {manufacturer.isActive
-                                        ? 'Active'
-                                        : 'Inactive'}
-                                </Badge>
+                                        ? manufacturerStatus.active.label
+                                        : manufacturerStatus.inactive.label}
+                                </Tag>
                             </Table.Td>
                             <Table.Td className="whitespace-nowrap">
                                 <ManufacturerActionsDropdown

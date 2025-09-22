@@ -111,17 +111,26 @@ const SideNav = ({
                 className="side-nav-header flex flex-col justify-center"
                 style={{ height: HEADER_HEIGHT }}
             >
-                <Logo
-                    imgClass="max-h-10"
-                    mode={mode || defaultMode}
-                    type={sideNavCollapse ? 'streamline' : 'full'}
+                <div
                     className={classNames(
+                        'flex items-center',
                         sideNavCollapse && 'ltr:ml-[11.5px] ltr:mr-[11.5px]',
                         sideNavCollapse
                             ? SIDE_NAV_CONTENT_GUTTER
                             : LOGO_X_GUTTER,
                     )}
-                />
+                >
+                    <Logo
+                        imgClass="max-h-10"
+                        mode={mode || defaultMode}
+                        type={sideNavCollapse ? 'streamline' : 'full'}
+                    />
+                    {!sideNavCollapse && (
+                        <span className="ml-3 text-xl font-bold text-gray-800 dark:text-white">
+                            ClaimsCorp
+                        </span>
+                    )}
+                </div>
             </Link>
             <div className={classNames('side-nav-content', contentClass)}>
                 <ScrollBar style={{ height: '100%' }} direction={direction}>

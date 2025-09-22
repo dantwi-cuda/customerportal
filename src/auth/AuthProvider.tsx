@@ -7,6 +7,7 @@ import {
     apiSignOut,
     apiSignUp,
     verifyMfaCode,
+    apiRefreshToken,
 } from '@/services/AuthService'
 import {
     getCustomerAccessToken,
@@ -51,7 +52,7 @@ function AuthProvider({ children }: AuthProviderProps) {
     const setSessionSignedIn = useSessionUser(
         (state) => state.setSessionSignedIn,
     )
-    const { token, setToken } = useToken()
+    const { token, setToken, setRefreshToken, clearTokens } = useToken()
     const [tokenState, setTokenState] = useState(token)
     const [isCustomerPortal, setIsCustomerPortal] = useState(false)
     const [customerName, setCustomerName] = useState('')
@@ -111,6 +112,12 @@ function AuthProvider({ children }: AuthProviderProps) {
     ) => {
         setToken(tokens.accessToken)
         setTokenState(tokens.accessToken)
+
+        // Store refresh token if provided
+        if (tokens.refreshToken) {
+            setRefreshToken(tokens.refreshToken)
+        }
+
         setSessionSignedIn(true)
 
         if (user) {
@@ -122,21 +129,30 @@ function AuthProvider({ children }: AuthProviderProps) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             delete (userToStore as any).roles // Remove roles property to avoid confusion
 
+            console.log('AuthProvider: User to store:', userToStore)
+            console.log('AuthProvider: User authority:', userToStore.authority)
+
             setUser(userToStore)
         }
     }
 
     const handleSignOut = () => {
-        setToken('')
+        clearTokens()
         setUser({})
         setSessionSignedIn(false)
     }
 
-    const signIn = async (values: SignInCredential): AuthResult => {
+    const signIn = async (values: SignInCredential): Promise<AuthResult> => {
         try {
             const resp = await apiSignIn(values)
             if (resp) {
-                handleSignIn({ accessToken: resp.token }, resp.user)
+                // Handle both access token and refresh token
+                const tokens: Token = {
+                    accessToken: resp.token,
+                    refreshToken: resp.refreshToken,
+                }
+
+                handleSignIn(tokens, resp.user)
 
                 // Check if MFA is required
                 if (resp.mfaRequired) {
@@ -193,7 +209,7 @@ function AuthProvider({ children }: AuthProviderProps) {
         }
     }
 
-    const signUp = async (values: SignUpCredential): AuthResult => {
+    const signUp = async (values: SignUpCredential): Promise<AuthResult> => {
         try {
             const resp = await apiSignUp(values)
             if (resp) {
@@ -312,6 +328,43 @@ function AuthProvider({ children }: AuthProviderProps) {
         }
     }
 
+    // Add proactive token refresh functionality
+    const refreshAccessToken = async (): Promise<boolean> => {
+        try {
+            const tokenUtils = useToken()
+            const currentRefreshToken = await Promise.resolve(
+                tokenUtils.refreshToken,
+            )
+            const currentAccessToken = await Promise.resolve(tokenUtils.token)
+
+            if (!currentRefreshToken) {
+                return false
+            }
+
+            const response = await apiRefreshToken(
+                currentRefreshToken,
+                currentAccessToken || undefined,
+            )
+
+            if (response?.token) {
+                setToken(response.token)
+                setTokenState(response.token)
+
+                // Update refresh token if provided
+                if (response.refreshToken) {
+                    setRefreshToken(response.refreshToken)
+                }
+
+                return true
+            }
+
+            return false
+        } catch (error) {
+            console.error('Proactive token refresh failed:', error)
+            return false
+        }
+    }
+
     return (
         <AuthContext.Provider
             value={{
@@ -326,6 +379,7 @@ function AuthProvider({ children }: AuthProviderProps) {
                 customerName,
                 accessCustomerPortal,
                 exitCustomerPortal,
+                refreshAccessToken,
             }}
         >
             {children}

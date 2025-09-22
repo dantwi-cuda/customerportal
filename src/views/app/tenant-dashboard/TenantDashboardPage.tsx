@@ -250,7 +250,6 @@ const TenantDashboardPage = () => {
 
             {/* Shop Revenue Table */}
             <Card>
-                {' '}
                 <div className="mb-4">
                     <h5>Top 10 Shops by Revenue</h5>
                     <p className="text-gray-600 text-sm">
@@ -273,7 +272,7 @@ const TenantDashboardPage = () => {
                                     <Table.Th>Total ROs</Table.Th>
                                     <Table.Th>Average Order Value</Table.Th>
                                 </Table.Tr>
-                            </Table.THead>{' '}
+                            </Table.THead>
                             <Table.TBody>
                                 {topShopRevenue.length === 0 ? (
                                     <Table.Tr>

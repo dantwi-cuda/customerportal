@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { CS_ADMIN, TENANT_ADMIN } from '@/constants/roles.constant' 
+import { CS_ADMIN, CS_USER, TENANT_ADMIN } from '@/constants/roles.constant' 
 import type { Routes } from '@/@types/routes'
 
 /**
@@ -143,7 +143,14 @@ const tenantPortalRoutes: Routes = [
         path: '/tenantportal/tenant/workspaces',
         component: lazy(() => import('@/views/tenant-admin/workspaces/WorkspacesListPage')),
         authority: [TENANT_ADMIN],
-    },    {
+    },
+    {
+        key: 'adminMenu.workspaces.import-status',
+        path: '/tenantportal/tenant/workspaces/import-status',
+        component: lazy(() => import('@/views/tenant-admin/workspaces/ImportStatusPage')),
+        authority: [TENANT_ADMIN],
+    },
+    {
         key: 'adminMenu.workspaces.details',
         path: '/tenantportal/tenant/workspaces/:workspaceId',
         component: lazy(() => import('@/views/tenant-admin/workspaces/WorkspaceDetailsPage')),
@@ -275,6 +282,12 @@ const tenantPortalRoutes: Routes = [
         authority: [CS_ADMIN],
     },
     {
+        key: 'tenantportal.programs.details',
+        path: '/tenantportal/programs/:programId/details',
+        component: lazy(() => import('@/views/programs/ProgramDetailsPage')),
+        authority: [CS_ADMIN],
+    },
+    {
         key: 'tenantportal.programs.add',
         path: '/tenantportal/programs/add',
         component: lazy(() => import('@/views/programs/ProgramForm')),
@@ -297,6 +310,60 @@ const tenantPortalRoutes: Routes = [
         path: '/tenantportal/programs/:programId/assignments',
         component: lazy(() => import('@/views/programs/ProgramAssignmentsPage')),
         authority: [CS_ADMIN],
+    },
+    
+    // Program Types Management
+    {
+        key: 'tenantportal.program-types',
+        path: '/tenantportal/program-types',
+        component: lazy(() => import('@/views/programs/ProgramTypesListPage')),
+        authority: [CS_ADMIN],
+    },
+    {
+        key: 'tenantportal.program-types.create',
+        path: '/tenantportal/program-types/create',
+        component: lazy(() => import('@/views/programs/CreateEditProgramTypePage')),
+        authority: [CS_ADMIN],
+    },
+    {
+        key: 'tenantportal.program-types.edit',
+        path: '/tenantportal/program-types/edit/:id',
+        component: lazy(() => import('@/views/programs/CreateEditProgramTypePage')),
+        authority: [CS_ADMIN],
+    },
+    
+    // Program Categories Management
+    {
+        key: 'tenantportal.program-categories',
+        path: '/tenantportal/program-categories',
+        component: lazy(() => import('@/views/programs/ProgramCategoriesListPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'tenantportal.program-categories.add',
+        path: '/tenantportal/program-categories/add',
+        component: lazy(() => import('@/views/programs/CreateEditProgramCategoryPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'tenantportal.program-categories.edit',
+        path: '/tenantportal/program-categories/edit/:id',
+        component: lazy(() => import('@/views/programs/CreateEditProgramCategoryPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    
+    // Accounting
+    {
+        key: 'tenantportal.accounting.masterChartOfAccount',
+        path: '/tenantportal/accounting/master-chart-of-account',
+        component: lazy(() => import('@/views/accounting/MasterChartOfAccountPage')),
+        authority: [TENANT_ADMIN],
+    },
+    {
+        key: 'tenantportal.programs.chartOfAccount',
+        path: '/tenantportal/programs/:programId/chart-of-account',
+        component: lazy(() => import('@/views/accounting/ProgramChartOfAccountPage')),
+        authority: [TENANT_ADMIN],
     },
 ]
 

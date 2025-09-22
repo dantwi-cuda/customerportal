@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom'
 import { HiOutlineArrowLeft } from 'react-icons/hi'
 
 const validationSchema = Yup.object().shape({
-    workspaceId: Yup.string().required('Workspace ID is required'),
+    workspaceID: Yup.string().required('Workspace ID is required'),
     name: Yup.string().required('Workspace name is required'),
     description: Yup.string(),
     isActive: Yup.boolean(),
@@ -35,8 +35,24 @@ const WorkspaceCreateForm: React.FC = () => {
     ) => {
         setSubmitting(true)
         setErrorMessage(null)
+
+        // Create the payload with systemName assigned to the same value as name
+        const payload = {
+            ...values,
+            systemName: values.name, // Assign workspace name to systemName
+        }
+
+        // Debug: Log the payload being sent to the API
+        console.log('Workspace creation payload:', payload)
+        console.log(
+            'Workspace creation payload JSON:',
+            JSON.stringify(payload, null, 2),
+        )
+
         try {
-            await WorkspaceService.createWorkspace(values)
+            const result = await WorkspaceService.createWorkspace(payload)
+            console.log('Workspace creation result:', result)
+
             toast.push(
                 <Notification title="Workspace Created" type="success">
                     Workspace "{values.name}" has been successfully created.
@@ -45,13 +61,17 @@ const WorkspaceCreateForm: React.FC = () => {
             navigate('/tenantportal/workspaces')
         } catch (error: any) {
             console.error('Error creating workspace:', error)
+            console.error('Error response:', error.response?.data)
             setErrorMessage(
-                error.message ||
+                error.response?.data?.message ||
+                    error.message ||
                     'Failed to create workspace. Please try again.',
             )
             toast.push(
                 <Notification title="Creation Failed" type="danger">
-                    {error.message || 'Failed to create workspace.'}
+                    {error.response?.data?.message ||
+                        error.message ||
+                        'Failed to create workspace.'}
                 </Notification>,
             )
         }
@@ -74,7 +94,7 @@ const WorkspaceCreateForm: React.FC = () => {
             )}
             <Formik
                 initialValues={{
-                    workspaceId: '',
+                    workspaceID: '',
                     name: '',
                     description: '',
                     isActive: true,
@@ -83,108 +103,125 @@ const WorkspaceCreateForm: React.FC = () => {
                 validationSchema={validationSchema}
                 onSubmit={handleSubmit}
             >
-                {({ errors, touched, isSubmitting, values }) => (
-                    <Form>
-                        <FormContainer>
-                            <FormItem
-                                label="Workspace ID"
-                                invalid={Boolean(
-                                    errors.workspaceId && touched.workspaceId,
-                                )}
-                                errorMessage={errors.workspaceId}
-                            >
-                                <Field
-                                    type="text"
-                                    name="workspaceId"
-                                    placeholder="Enter workspace ID"
-                                    component={Input}
-                                />
-                            </FormItem>
-                            <FormItem
-                                label="Workspace Name"
-                                invalid={Boolean(errors.name && touched.name)}
-                                errorMessage={errors.name}
-                            >
-                                <Field
-                                    type="text"
-                                    name="name"
-                                    placeholder="Enter workspace name"
-                                    component={Input}
-                                />
-                            </FormItem>
-                            <FormItem
-                                label="Description (Optional)"
-                                invalid={Boolean(
-                                    errors.description && touched.description,
-                                )}
-                                errorMessage={errors.description}
-                            >
-                                <Field
-                                    name="description"
-                                    placeholder="Enter workspace description"
-                                    component={Input}
-                                    textArea
-                                />
-                            </FormItem>
-                            <FormItem label="Status">
-                                <div className="flex flex-col gap-2">
-                                    <Field name="isActive">
-                                        {({ field }: any) => (
-                                            <Checkbox
-                                                checked={field.value}
-                                                onChange={(e) =>
-                                                    field.onChange({
-                                                        ...field,
-                                                        target: {
-                                                            ...field.target,
-                                                            value: e,
-                                                        },
-                                                    })
-                                                }
-                                            >
-                                                Active
-                                            </Checkbox>
-                                        )}
-                                    </Field>
-                                    <Field name="isValidated">
-                                        {({ field }: any) => (
-                                            <Checkbox
-                                                checked={field.value}
-                                                onChange={(e) =>
-                                                    field.onChange({
-                                                        ...field,
-                                                        target: {
-                                                            ...field.target,
-                                                            value: e,
-                                                        },
-                                                    })
-                                                }
-                                            >
-                                                Validated
-                                            </Checkbox>
-                                        )}
-                                    </Field>
-                                </div>
-                            </FormItem>
-                            <div className="flex gap-2 justify-end">
-                                <Button type="button" onClick={handleCancel}>
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    variant="solid"
-                                    color="blue-600"
-                                    loading={isSubmitting}
-                                    disabled={isSubmitting}
+                {({ errors, touched, isSubmitting, values }) => {
+                    // Debug: Log form values to help troubleshoot
+                    console.log('Form values:', values)
+                    console.log('Form errors:', errors)
+                    console.log('Form touched:', touched)
+
+                    return (
+                        <Form>
+                            <FormContainer>
+                                <FormItem
+                                    label="Workspace ID"
+                                    invalid={Boolean(
+                                        errors.workspaceID &&
+                                            touched.workspaceID,
+                                    )}
+                                    errorMessage={errors.workspaceID}
                                 >
-                                    {isSubmitting
-                                        ? 'Creating...'
-                                        : 'Create Workspace'}
-                                </Button>
-                            </div>
-                        </FormContainer>
-                    </Form>
-                )}
+                                    <Field name="workspaceID">
+                                        {({ field }: any) => (
+                                            <Input
+                                                {...field}
+                                                type="text"
+                                                placeholder="Enter workspace ID"
+                                            />
+                                        )}
+                                    </Field>
+                                </FormItem>
+                                <FormItem
+                                    label="Workspace Name"
+                                    invalid={Boolean(
+                                        errors.name && touched.name,
+                                    )}
+                                    errorMessage={errors.name}
+                                >
+                                    <Field name="name">
+                                        {({ field }: any) => (
+                                            <Input
+                                                {...field}
+                                                type="text"
+                                                placeholder="Enter workspace name"
+                                            />
+                                        )}
+                                    </Field>
+                                </FormItem>
+                                <FormItem
+                                    label="Description (Optional)"
+                                    invalid={Boolean(
+                                        errors.description &&
+                                            touched.description,
+                                    )}
+                                    errorMessage={errors.description}
+                                >
+                                    <Field name="description">
+                                        {({ field }: any) => (
+                                            <Input
+                                                {...field}
+                                                placeholder="Enter workspace description"
+                                                textArea
+                                            />
+                                        )}
+                                    </Field>
+                                </FormItem>
+                                <FormItem label="Status">
+                                    <div className="flex flex-col gap-2">
+                                        <Field name="isActive">
+                                            {({ field, form }: any) => (
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onChange={(checked) =>
+                                                        form.setFieldValue(
+                                                            'isActive',
+                                                            checked,
+                                                        )
+                                                    }
+                                                >
+                                                    Active
+                                                </Checkbox>
+                                            )}
+                                        </Field>
+                                        <Field name="isValidated">
+                                            {({ field, form }: any) => (
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onChange={(checked) =>
+                                                        form.setFieldValue(
+                                                            'isValidated',
+                                                            checked,
+                                                        )
+                                                    }
+                                                >
+                                                    Validated
+                                                </Checkbox>
+                                            )}
+                                        </Field>
+                                    </div>
+                                </FormItem>
+                                <div className="flex gap-2 justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={handleCancel}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        variant="solid"
+                                        color="blue-600"
+                                        loading={isSubmitting}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting
+                                            ? 'Creating...'
+                                            : 'Create Workspace'}
+                                    </Button>
+                                </div>
+                            </FormContainer>
+                        </Form>
+                    )
+                }}
             </Formik>
         </Card>
     )

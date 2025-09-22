@@ -12,6 +12,7 @@ import {
     Checkbox,
     Dialog,
 } from '@/components/ui'
+import { HiOutlineArrowLeft, HiOutlineSave } from 'react-icons/hi'
 import WorkspaceService from '@/services/WorkspaceService'
 import { useNavigate, useParams } from 'react-router-dom'
 import type {
@@ -38,6 +39,21 @@ const WorkspaceEditPage = () => {
     // Tenant admin check
     const isTenantAdmin = !!user?.tenantId
 
+    const handleBack = () => {
+        const nameChanged = customerWorkspaceName !== (workspace?.name || '')
+        const originalActiveState = hasInitialValues
+            ? workspace?.isActive
+            : true
+
+        if (nameChanged || isActive !== originalActiveState) {
+            // Show confirmation dialog if there are unsaved changes
+            setConfirmDialogOpen(true)
+        } else {
+            // Navigate directly if no changes
+            navigate('/tenantportal/tenant/workspaces')
+        }
+    }
+
     useEffect(() => {
         if (workspaceId && isTenantAdmin) {
             fetchWorkspaceDetails()
@@ -63,7 +79,7 @@ const WorkspaceEditPage = () => {
             setWorkspace(workspaceData)
 
             // Get workspace assignments to get customer-specific details
-            const assignments = await WorkspaceService.getWorkspaceAssignments()            
+            const assignments = await WorkspaceService.getWorkspaceAssignments()
             const tenantAssignment = assignments.find(
                 (a) =>
                     String(a.workspaceId) === String(workspaceId) &&
@@ -209,12 +225,43 @@ const WorkspaceEditPage = () => {
     }
 
     return (
-        <div className="p-4 max-w-3xl mx-auto">
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleBack}
+                        >
+                            Back to Workspaces
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">Edit Workspace Settings</h4>
+                            <p className="text-gray-600 text-sm">
+                                Customize workspace name and status for your
+                                tenant
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiOutlineSave />}
+                        onClick={handleSave}
+                        loading={saving}
+                        disabled={saving}
+                        className="w-full sm:w-auto"
+                    >
+                        Save Changes
+                    </Button>
+                </div>
+            </Card>
+
+            {/* Content Card */}
             <Card>
                 <div className="p-4">
-                    <h4 className="mb-4 text-lg font-semibold">
-                        Edit Workspace Settings
-                    </h4>
                     <div className="mb-6">
                         <div className="text-sm text-gray-500 mb-2">
                             Global Workspace Name
@@ -239,7 +286,7 @@ const WorkspaceEditPage = () => {
                         <FormItem>
                             <Checkbox
                                 checked={isActive}
-                                onChange={(e) => setIsActive(e.target.checked)}
+                                onChange={(checked) => setIsActive(checked)}
                             >
                                 Active for your tenant
                             </Checkbox>
@@ -248,25 +295,6 @@ const WorkspaceEditPage = () => {
                                 be able to access this workspace
                             </div>
                         </FormItem>
-
-                        <div className="mt-6 flex justify-end gap-2">
-                            <Button
-                                variant="plain"
-                                onClick={handleConfirmNavigateBack}
-                                disabled={saving}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="solid"
-                                color="blue-600"
-                                onClick={handleSave}
-                                loading={saving}
-                                disabled={saving}
-                            >
-                                Save Changes
-                            </Button>
-                        </div>
                     </FormContainer>
                 </div>
             </Card>

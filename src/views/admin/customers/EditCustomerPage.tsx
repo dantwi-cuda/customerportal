@@ -56,6 +56,18 @@ const EditCustomerPage = () => {
             console.log(`Fetching customer with ID: ${customerId}`)
             const data = await CustomerService.getCustomerById(customerId)
             console.log('Customer data received in EditCustomerPage:', data)
+            console.log('Customer data fields:', {
+                name: data?.name,
+                subdomain: data?.subdomain,
+                address: data?.address,
+                theme: data?.theme,
+                legacyBusinessNetworkID: data?.legacyBusinessNetworkID,
+                portalDisplayName: data?.portalDisplayName,
+                portalDisplaySubName: data?.portalDisplaySubName,
+                portalDisplayPageSubTitle: data?.portalDisplayPageSubTitle,
+                portalWindowIcon: data?.portalWindowIcon,
+                isActive: data?.isActive,
+            })
             if (data && data.id !== '0') {
                 // Check if data is valid and not the "Unknown" customer
                 setCustomer(data)
@@ -90,23 +102,26 @@ const EditCustomerPage = () => {
 
         setSaving(true)
         try {
-            // Assuming CustomerInfoFormValues can be directly used for updateCustomerInfo
-            // or needs to be mapped to the expected type by the service.
-            // For now, direct usage is assumed if types align.
-            const updatedInfo = {
-                // Map fields from values to what updateCustomerInfo expects
-                // This depends on the definition of CustomerInfo type used by the service
+            // Convert form values to UpdateCustomerRequest format
+            const updateData = {
                 name: values.name,
-                // email: values.email, // If email is part of CustomerInfo
-                // Ensure all fields expected by updateCustomerInfo are included
-                // For example, if legalName and domainUrl are part of CustomerInfo:
-                legalName: customer.legalName, // Keep existing if not in form, or update from form
-                domainUrl: customer.domainUrl, // Keep existing if not in form, or update from form
-                isActive: customer.isActive, // Keep existing
+                subdomain: values.subdomain,
+                address: values.address || '',
+                theme: values.theme || 'default',
+                legacyBusinessNetworkID: values.legacyBusinessNetworkID || '',
+                portalDisplayName: values.portalDisplayName || '',
+                portalDisplaySubName: values.portalDisplaySubName || '',
+                portalDisplayPageSubTitle:
+                    values.portalDisplayPageSubTitle || '',
+                portalWindowIcon: values.portalWindowIcon || '',
+                isActive: values.isActive ?? true,
             }
-            await CustomerService.updateCustomerInfo(id, updatedInfo as any) // Cast to any if type mismatch, ideally map correctly
 
-            setCustomer((prev) => (prev ? { ...prev, ...updatedInfo } : null))
+            const updatedCustomer = await CustomerService.updateCustomer(
+                id,
+                updateData,
+            )
+            setCustomer(updatedCustomer)
 
             toast.push(
                 <Notification title="Success" type="success">
@@ -341,22 +356,63 @@ const EditCustomerPage = () => {
                     <Tabs.TabList>
                         <Tabs.TabNav value="info">Customer Info</Tabs.TabNav>
                         <Tabs.TabNav value="credentials">
-                            BI Credentials
+                            Admin User
                         </Tabs.TabNav>
                         <Tabs.TabNav value="branding">Branding</Tabs.TabNav>
                     </Tabs.TabList>
                     <Tabs.TabContent value="info">
                         <div className="mt-6">
-                            <CustomerInfoForm
-                                initialValues={{
+                            {(() => {
+                                const initialValues: CustomerInfoFormValues = {
                                     name: customer.name || '',
-                                    email: (customer as any).email || '', // Assuming email is part of CustomerInfoFormValues
-                                    // Map other fields from customer to CustomerInfoFormValues as needed
-                                }}
-                                onSubmit={handleSaveInfo}
-                                isSubmitting={saving && activeTab === 'info'}
-                                customer={customer} // Pass full customer if form needs more existing data
-                            />
+                                    subdomain: customer.subdomain || '',
+                                    address: customer.address || '',
+                                    theme: customer.theme || 'default',
+                                    legacyBusinessNetworkID:
+                                        customer.legacyBusinessNetworkID || '',
+                                    portalDisplayName:
+                                        customer.portalDisplayName || '',
+                                    portalDisplaySubName:
+                                        customer.portalDisplaySubName || '',
+                                    portalDisplayPageSubTitle:
+                                        customer.portalDisplayPageSubTitle ||
+                                        '',
+                                    portalWindowIcon:
+                                        customer.portalWindowIcon || '',
+                                    isActive: customer.isActive ?? true,
+                                }
+                                console.log(
+                                    'Form initialValues:',
+                                    initialValues,
+                                )
+                                console.log('Detailed field values:', {
+                                    name: initialValues.name,
+                                    subdomain: initialValues.subdomain,
+                                    address: initialValues.address,
+                                    theme: initialValues.theme,
+                                    legacyBusinessNetworkID:
+                                        initialValues.legacyBusinessNetworkID,
+                                    portalDisplayName:
+                                        initialValues.portalDisplayName,
+                                    portalDisplaySubName:
+                                        initialValues.portalDisplaySubName,
+                                    portalDisplayPageSubTitle:
+                                        initialValues.portalDisplayPageSubTitle,
+                                    portalWindowIcon:
+                                        initialValues.portalWindowIcon,
+                                    isActive: initialValues.isActive,
+                                })
+                                return (
+                                    <CustomerInfoForm
+                                        initialValues={initialValues}
+                                        onSubmit={handleSaveInfo}
+                                        isSubmitting={
+                                            saving && activeTab === 'info'
+                                        }
+                                        customer={customer}
+                                    />
+                                )
+                            })()}
                         </div>
                     </Tabs.TabContent>
                     <Tabs.TabContent value="credentials">

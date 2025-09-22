@@ -54,9 +54,9 @@ export const protectedRoutes: Routes = [
         path: '/admin/customers',
         component: lazy(() => import('@/views/admin/customers/CustomerListPage')), 
         authority: [CS_ADMIN, CS_USER], 
-        meta: {
-            header: { title: 'Customer Management' }, // Reverted to object structure
-        },
+        // meta: {
+        //     header: { title: 'Customer Management 1' }, // Reverted to object structure
+        // },
     },
     {
         key: 'admin.customers.create',
@@ -76,6 +76,15 @@ export const protectedRoutes: Routes = [
             header: { title: 'Edit Customer' }, // Reverted to object structure
         },
     },
+    {
+        key: 'admin.customers.addAdminUser',
+        path: '/admin/customers/:customerId/add-admin-user',
+        component: lazy(() => import('@/views/admin/customers/AddAdminUserPage')),
+        authority: [CS_ADMIN, CS_USER],
+        meta: {
+            header: { title: 'Add Admin User' },
+        },
+    },
     // Shop Attributes Management Routes (Tenant Portal)
     {
         key: 'tenantportal.shopAttributes.attributes',
@@ -83,7 +92,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/admin/shop-attributes/ShopAttributeListPage')),
         authority: [CS_ADMIN, CS_USER],
         meta: {
-            header: { title: 'Shop Attributes' },
+            //header: { title: 'Shop Attributes' },
             pageContainerType: 'contained',
         },
     },
@@ -113,7 +122,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/admin/attribute-categories/AttributeCategoryListPage')),
         authority: [CS_ADMIN, CS_USER],
         meta: {
-            header: { title: 'Attribute Categories' },
+           // header: { title: 'Attribute Categories' },
             pageContainerType: 'contained',
         },
     },
@@ -123,7 +132,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/admin/attribute-units/AttributeUnitListPage')),
         authority: [CS_ADMIN, CS_USER],
         meta: {
-            header: { title: 'Attribute Units' },
+           // header: { title: 'Attribute Units' },
             pageContainerType: 'contained',
         },
     },
@@ -134,7 +143,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/manufacturers/ManufacturerManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'manufacturer.all', 'manufacturer.view'],
         meta: {
-            header: { title: 'Manufacturer Management' },
+            // header: { title: 'Manufacturer Management' },
             pageContainerType: 'contained',
         },
     },
@@ -144,7 +153,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/brands/BrandManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'brand.all', 'brand.view'],
         meta: {
-            header: { title: 'Brand Management' },
+            // header: { title: 'Brand Management' },
             pageContainerType: 'contained',
         },
     },
@@ -154,7 +163,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/suppliers/SupplierManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'suppliers.all', 'suppliers.view'],
         meta: {
-            header: { title: 'Supplier Management' },
+            // header: { title: 'Supplier Management' },
             pageContainerType: 'contained',
         },
     },
@@ -164,7 +173,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/part-categories/PartCategoryManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'partcategory.all', 'partcategory.view'],
         meta: {
-            header: { title: 'Part Category Management' },
+            // header: { title: 'Part Category Management' },
             pageContainerType: 'contained',
         },
     },
@@ -174,7 +183,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/master-parts/MasterPartManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'masterparts.all', 'masterparts.view'],
         meta: {
-            header: { title: 'Master Parts Management' },
+            // header: { title: 'Master Parts Management' },
             pageContainerType: 'contained',
         },
     },
@@ -184,7 +193,7 @@ export const protectedRoutes: Routes = [
         component: lazy(() => import('@/views/parts-management/supplier-parts/SupplierPartManagementPage')),
         authority: [CS_ADMIN, CS_USER, TENANT_ADMIN, 'supplierparts.all', 'supplierparts.view'],
         meta: {
-            header: { title: 'Supplier Parts Management' },
+            // header: { title: 'Supplier Parts Management' },
             pageContainerType: 'contained',
         },
     },

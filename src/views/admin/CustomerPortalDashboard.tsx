@@ -8,7 +8,7 @@ import {
     HiOutlineDocumentReport,
 } from 'react-icons/hi'
 // import { getAdminDashboardStats } from '@/services/AdminService'
-import AdminHeader from '../components/AdminHeader'
+import AdminHeader from './components/AdminHeader'
 import CustomersTable from '../customers/components/CustomersTable'
 import RecentActivityTable from '../components/RecentActivityTable'
 

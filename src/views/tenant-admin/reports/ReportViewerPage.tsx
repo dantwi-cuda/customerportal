@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Card, Button, Notification, toast, Skeleton } from '@/components/ui'
-import { HiOutlineArrowLeft, HiOutlineRefresh } from 'react-icons/hi'
+import {
+    HiOutlineArrowLeft,
+    HiOutlineRefresh,
+    HiOutlineDocumentReport,
+} from 'react-icons/hi'
 import * as ReportService from '@/services/ReportService'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { Report, ReportEmbedToken } from '@/@types/report'
 import useAuth from '@/auth/useAuth'
+import { models } from 'powerbi-client'
+import { PowerBIEmbed } from 'powerbi-client-react'
 
 const ReportViewerPage = () => {
     const { id } = useParams<{ id: string }>()
@@ -14,11 +20,15 @@ const ReportViewerPage = () => {
     // State management
     const [report, setReport] = useState<Report | null>(null)
     const [embedToken, setEmbedToken] = useState<ReportEmbedToken | null>(null)
+    const [embedConfigData, setEmbedConfigData] = useState<any>(null)
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
 
     // Tenant admin check: User must have a tenantId to manage reports
     const isTenantAdmin = !!user?.tenantId
+
+    // PowerBI embed reference
+    const reportRef = useRef<any>(null)
 
     useEffect(() => {
         if (isTenantAdmin && id) {
@@ -49,8 +59,51 @@ const ReportViewerPage = () => {
 
     const fetchEmbedToken = async (reportId: string) => {
         try {
+            console.log('Fetching embed token for report:', reportId)
             const data = await ReportService.getReportEmbedToken(reportId)
+            console.log('Embed token response:', {
+                reportId: data.reportId,
+                hasEmbedToken: !!data.embedToken,
+                embedUrl: data.embedUrl,
+                expiresInMinutes: data.expiresInMinutes,
+                datasetId: data.datasetId,
+                isEffectiveIdentityRequired: data.isEffectiveIdentityRequired,
+                isEffectiveIdentityRolesRequired:
+                    data.isEffectiveIdentityRolesRequired,
+            })
             setEmbedToken(data)
+
+            // Create PowerBI embed configuration
+            if (data.embedToken && data.embedUrl && data.reportId) {
+                const config = {
+                    type: 'report',
+                    id: data.reportId,
+                    embedUrl: data.embedUrl,
+                    tokenType: models.TokenType.Embed,
+                    accessToken: data.embedToken,
+                    permissions: models.Permissions.Read,
+                    settings: {
+                        panes: {
+                            filters: {
+                                expanded: false,
+                                visible: true,
+                            },
+                            pageNavigation: {
+                                visible: true,
+                            },
+                        },
+                        background: models.BackgroundType.Transparent,
+                        bars: {
+                            statusBar: {
+                                visible: true,
+                            },
+                        },
+                    },
+                }
+
+                console.log('PowerBI Embed Configuration created:', config)
+                setEmbedConfigData(config)
+            }
         } catch (error) {
             console.error('Error fetching embed token:', error)
             toast.push(
@@ -99,49 +152,47 @@ const ReportViewerPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <Button
-                    size="sm"
-                    icon={<HiOutlineArrowLeft />}
-                    onClick={handleBack}
-                    variant="plain"
-                >
-                    Back to Reports
-                </Button>
-
-                <div className="flex justify-end">
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleBack}
+                        >
+                            Back to Reports
+                        </Button>
+                        <div>
+                            {loading ? (
+                                <Skeleton height={20} width="200px" />
+                            ) : (
+                                <>
+                                    <h4 className="mb-1">{report?.name}</h4>
+                                    <p className="text-gray-600 text-sm">
+                                        {report?.description ||
+                                            'No description'}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
                     <Button
                         size="sm"
+                        variant="default"
                         icon={<HiOutlineRefresh />}
                         onClick={handleRefresh}
                         loading={refreshing}
+                        className="w-full sm:w-auto"
                     >
                         Refresh
                     </Button>
                 </div>
-            </div>
+            </Card>
 
-            {loading ? (
-                <Card className="mb-4">
-                    <div className="p-4">
-                        <Skeleton height={28} width="60%" />
-                        <div className="mt-4">
-                            <Skeleton height={16} width="40%" />
-                        </div>
-                    </div>
-                </Card>
-            ) : (
-                <Card className="mb-4">
-                    <div className="p-4">
-                        <h4>{report?.name}</h4>
-                        <p className="text-gray-500 mt-1">
-                            {report?.description || 'No description'}
-                        </p>
-                    </div>
-                </Card>
-            )}
-
+            {/* Content Card */}
             <Card className="overflow-hidden">
                 {loading ? (
                     <div className="flex justify-center items-center h-[600px]">
@@ -149,12 +200,86 @@ const ReportViewerPage = () => {
                     </div>
                 ) : (
                     <div className="w-full h-[600px] md:h-[700px] lg:h-[800px]">
-                        {report?.embedUrl && embedToken ? (
+                        {embedConfigData ? (
+                            <PowerBIEmbed
+                                embedConfig={embedConfigData}
+                                cssClassName="h-full w-full"
+                                getEmbeddedComponent={(embedObject) => {
+                                    console.log(
+                                        'PowerBI embed object received:',
+                                        embedObject,
+                                    )
+                                    reportRef.current = embedObject
+
+                                    // Add event listeners for debugging
+                                    if (embedObject) {
+                                        embedObject.on('loaded', () => {
+                                            console.log(
+                                                'PowerBI Report loaded successfully',
+                                            )
+                                        })
+
+                                        embedObject.on('rendered', () => {
+                                            console.log(
+                                                'PowerBI Report rendered successfully',
+                                            )
+                                        })
+
+                                        embedObject.on(
+                                            'error',
+                                            (event: any) => {
+                                                console.error(
+                                                    'PowerBI Report error:',
+                                                    event.detail,
+                                                )
+                                                toast.push(
+                                                    <Notification
+                                                        type="danger"
+                                                        title="Report Error"
+                                                    >
+                                                        Failed to load the Power
+                                                        BI report. Please try
+                                                        refreshing.
+                                                    </Notification>,
+                                                )
+                                            },
+                                        )
+                                    }
+                                }}
+                                eventHandlers={
+                                    new Map([
+                                        [
+                                            'loaded',
+                                            () =>
+                                                console.log(
+                                                    'PowerBI event: loaded',
+                                                ),
+                                        ],
+                                        [
+                                            'rendered',
+                                            () =>
+                                                console.log(
+                                                    'PowerBI event: rendered',
+                                                ),
+                                        ],
+                                        [
+                                            'error',
+                                            (event: any) =>
+                                                console.error(
+                                                    'PowerBI event: error',
+                                                    event,
+                                                ),
+                                        ],
+                                    ])
+                                }
+                            />
+                        ) : embedToken && embedToken.embedUrl ? (
                             <iframe
-                                title={report.name}
-                                src={`${report.embedUrl}&token=${embedToken.token}`}
+                                title={report?.name || 'Power BI Report'}
+                                src={embedToken.embedUrl}
                                 className="w-full h-full border-0"
                                 allowFullScreen
+                                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-6">
@@ -165,13 +290,13 @@ const ReportViewerPage = () => {
                                     Report not available for preview
                                 </h5>
                                 <p className="text-gray-500 text-center">
-                                    {!report?.embedUrl
-                                        ? 'This report does not have an embed URL configured.'
-                                        : !embedToken
-                                          ? 'Unable to generate embed token for this report.'
+                                    {!embedToken
+                                        ? 'Unable to generate embed token for this report.'
+                                        : !embedToken.embedUrl
+                                          ? 'This report does not have a valid embed URL.'
                                           : 'An error occurred while loading the report.'}
                                 </p>
-                                {!embedToken && report?.embedUrl && (
+                                {!embedToken && (
                                     <Button
                                         className="mt-4"
                                         onClick={handleRefresh}

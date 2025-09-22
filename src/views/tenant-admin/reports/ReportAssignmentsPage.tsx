@@ -277,18 +277,39 @@ const ReportAssignmentsPage = () => {
     }
 
     return (
-        <div className="p-2 sm:p-4">
-            <div className="mb-4 flex items-center">
-                <Button
-                    size="sm"
-                    icon={<HiOutlineArrowLeft />}
-                    onClick={handleBack}
-                    variant="plain"
-                >
-                    Back to Reports
-                </Button>
-            </div>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={handleBack}
+                        >
+                            Back to Reports
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">Assign Report</h4>
+                            <p className="text-gray-600 text-sm">
+                                Assign {report?.name} to users or roles to grant access permissions
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiOutlineSave />}
+                        onClick={handleSave}
+                        loading={saving}
+                        className="w-full sm:w-auto"
+                    >
+                        Save Assignments
+                    </Button>
+                </div>
+            </Card>
 
+            {/* Content Card */}
             <Card>
                 {loading ? (
                     <div className="flex justify-center items-center py-8">
@@ -296,12 +317,6 @@ const ReportAssignmentsPage = () => {
                     </div>
                 ) : (
                     <div className="p-4">
-                        <h4 className="mb-2">Assign {report?.name}</h4>
-                        <p className="mb-4 text-gray-500">
-                            Assign this report to users or roles to grant access
-                            permissions.
-                        </p>
-
                         <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
                             <div className="relative w-full sm:w-64">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -317,12 +332,7 @@ const ReportAssignmentsPage = () => {
                                     }
                                 />
                             </div>
-
-                            <Button
-                                variant="solid"
-                                icon={<HiOutlineSave />}
-                                onClick={handleSave}
-                                loading={saving}
+                        </div>
                                 className="w-full sm:w-auto"
                             >
                                 Save Assignments

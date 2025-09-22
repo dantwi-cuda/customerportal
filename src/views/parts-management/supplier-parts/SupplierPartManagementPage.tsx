@@ -188,25 +188,49 @@ const SupplierPartManagementPage = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    {/* <h1 className="text-2xl font-bold">
-                        Supplier Parts Management
-                    </h1> */}
-                    <p className="text-gray-600 mt-1">
-                        Manage supplier parts and their information
-                    </p>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Controls Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h4 className="mb-1">Supplier Parts Management</h4>
+                        <p className="text-gray-600">
+                            Manage supplier parts and their information
+                        </p>
+                    </div>
+                    <Button
+                        variant="solid"
+                        icon={<HiPlusCircle />}
+                        onClick={handleAddNew}
+                        disabled={showForm || showBulkUpload}
+                        className="w-full sm:w-auto"
+                    >
+                        Add Supplier Part
+                    </Button>
                 </div>
-                <Button
-                    variant="solid"
-                    icon={<HiPlusCircle />}
-                    onClick={handleAddNew}
-                    disabled={showForm || showBulkUpload}
-                >
-                    Add Supplier Part
-                </Button>
-            </div>
+
+                {/* Search and Action Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center flex-1">
+                        <HiOutlineSearch className="text-gray-400 mr-2" />
+                        <Input
+                            type="text"
+                            placeholder="Search supplier parts..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="max-w-md"
+                        />
+                    </div>
+                    <Button
+                        variant="solid"
+                        onClick={handleShowBulkUpload}
+                        disabled={showForm || showBulkUpload}
+                        className="w-full sm:w-auto"
+                    >
+                        Bulk Upload
+                    </Button>
+                </div>
+            </Card>
 
             {showForm && (
                 <SupplierPartForm
@@ -234,27 +258,8 @@ const SupplierPartManagementPage = () => {
                 </div>
             )}
 
-            <Card className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center">
-                        <HiOutlineSearch className="text-gray-400 mr-2" />
-                        <Input
-                            type="text"
-                            placeholder="Search supplier parts..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-md"
-                        />
-                    </div>
-                    <Button
-                        variant="solid"
-                        onClick={handleShowBulkUpload}
-                        disabled={showForm || showBulkUpload}
-                    >
-                        Bulk Upload
-                    </Button>
-                </div>
-
+            {/* Content Card */}
+            <Card>
                 <SupplierPartsTable
                     supplierParts={filteredSupplierParts}
                     loading={loading}

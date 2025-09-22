@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import MasterPartsTable from './components/MasterPartsTable'
 import MasterPartForm from './components/MasterPartForm'
 import BulkUpload from './components/BulkUpload'
+import UploadJobsStatus from './components/UploadJobsStatus'
 import MasterPartService from '@/services/MasterPartService'
 import { Loading } from '@/components/shared'
 import type {
@@ -28,6 +29,7 @@ const MasterPartManagementPage = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [showForm, setShowForm] = useState(false)
     const [showBulkUpload, setShowBulkUpload] = useState(false)
+    const [showJobStatus, setShowJobStatus] = useState(false)
     const [editingMasterPart, setEditingMasterPart] =
         useState<MasterPart | null>(null)
     const [submitting, setSubmitting] = useState(false)
@@ -100,6 +102,14 @@ const MasterPartManagementPage = () => {
     const handleShowBulkUpload = () => {
         setShowBulkUpload(true)
         setShowForm(false)
+        setShowJobStatus(false)
+        setEditingMasterPart(null)
+    }
+
+    const handleShowJobStatus = () => {
+        setShowJobStatus(true)
+        setShowForm(false)
+        setShowBulkUpload(false)
         setEditingMasterPart(null)
     }
 
@@ -189,6 +199,7 @@ const MasterPartManagementPage = () => {
     const handleCancel = () => {
         setShowForm(false)
         setShowBulkUpload(false)
+        setShowJobStatus(false)
         setEditingMasterPart(null)
     }
 
@@ -196,48 +207,94 @@ const MasterPartManagementPage = () => {
         fetchMasterParts()
     }
 
-    if (loading && !showForm && !showBulkUpload) {
+    if (loading && !showForm && !showBulkUpload && !showJobStatus) {
         return <Loading loading={true} />
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    {/* <h1 className="text-2xl font-bold">
-                        Master Parts Management
-                    </h1> */}
-                    <p className="text-gray-600 mt-1">
-                        Manage master parts and their information
-                    </p>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h4 className="mb-1">Master Parts Management</h4>
+                        <p className="text-gray-600">
+                            Manage master parts and their information
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="plain"
+                            icon={<HiOfficeBuilding />}
+                            onClick={handleAddManufacturer}
+                            disabled={
+                                showForm || showBulkUpload || showJobStatus
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            Add Manufacturer
+                        </Button>
+                        <Button
+                            variant="plain"
+                            icon={<HiTag />}
+                            onClick={handleAddBrand}
+                            disabled={
+                                showForm || showBulkUpload || showJobStatus
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            Add Brand
+                        </Button>
+                        <Button
+                            variant="solid"
+                            icon={<HiPlusCircle />}
+                            onClick={handleAddNew}
+                            disabled={
+                                showForm || showBulkUpload || showJobStatus
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            Add Master Part
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="plain"
-                        icon={<HiOfficeBuilding />}
-                        onClick={handleAddManufacturer}
-                        disabled={showForm || showBulkUpload}
-                    >
-                        Add Manufacturer
-                    </Button>
-                    <Button
-                        variant="plain"
-                        icon={<HiTag />}
-                        onClick={handleAddBrand}
-                        disabled={showForm || showBulkUpload}
-                    >
-                        Add Brand
-                    </Button>
-                    <Button
-                        variant="solid"
-                        icon={<HiPlusCircle />}
-                        onClick={handleAddNew}
-                        disabled={showForm || showBulkUpload}
-                    >
-                        Add Master Part
-                    </Button>
+
+                {/* Search and Action Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center flex-1">
+                        <HiOutlineSearch className="text-gray-400 mr-2" />
+                        <Input
+                            type="text"
+                            placeholder="Search master parts..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="max-w-md"
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="solid"
+                            onClick={handleShowBulkUpload}
+                            disabled={
+                                showForm || showBulkUpload || showJobStatus
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            Bulk Upload
+                        </Button>
+                        <Button
+                            variant="plain"
+                            onClick={handleShowJobStatus}
+                            disabled={
+                                showForm || showBulkUpload || showJobStatus
+                            }
+                            className="w-full sm:w-auto"
+                        >
+                            View Jobs
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            </Card>
 
             {showForm && (
                 <MasterPartForm
@@ -265,27 +322,22 @@ const MasterPartManagementPage = () => {
                 </div>
             )}
 
-            <Card className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center">
-                        <HiOutlineSearch className="text-gray-400 mr-2" />
-                        <Input
-                            type="text"
-                            placeholder="Search master parts..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-md"
-                        />
+            {showJobStatus && (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold">
+                            Upload Job Status
+                        </h2>
+                        <Button variant="plain" onClick={handleCancel}>
+                            Close
+                        </Button>
                     </div>
-                    <Button
-                        variant="solid"
-                        onClick={handleShowBulkUpload}
-                        disabled={showForm || showBulkUpload}
-                    >
-                        Bulk Upload
-                    </Button>
+                    <UploadJobsStatus onRefresh={fetchMasterParts} />
                 </div>
+            )}
 
+            {/* Content Card */}
+            <Card>
                 <MasterPartsTable
                     masterParts={filteredMasterParts}
                     loading={loading}

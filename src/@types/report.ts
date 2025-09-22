@@ -1,24 +1,38 @@
 export type Report = {
     id: string
     name: string
-    originalName: string
-    description: string
+    tenantDisplayName?: string
+    tenantDescription?: string
+    isTenantCustomized?: boolean
+    originalName?: string
+    description?: string
     powerBiReportId: string
-    workspaceId: number
-    reportCategoryId: number
-    isApproved: boolean
-    isEnabled: boolean
-    status: string
+    powerBiReportDescription?: string
+    webUrl?: string
     embedUrl?: string
+    reportType?: string
+    datasetId?: string
+    workspaceId: number
     workspaceName?: string
+    reportCategoryId?: number
+    tenantReportCategoryId?: number | null
     categoryName?: string
+    isTenantApproved: boolean
+    isTenantEnabled: boolean
+    // Legacy fields for backward compatibility
+    isApproved?: boolean
+    isEnabled?: boolean
+    status: string
     thumbnailUrl?: string
     isPinned?: boolean
     lastAccessed?: string
     createdAt: string
     updatedAt?: string
-    assignedRoles?: string[]
+    createdBy?: string | null
+    lastUpdatedBy?: string | null
+    assignedRoles?: string[] | null
     assignedUsers?: string[]
+    assignedUserIds?: string[] | null
     type?: string
     lastUpdated?: string
 }
@@ -55,7 +69,12 @@ export type ReportWorkspace = {
 }
 
 export type ReportEmbedToken = {
-    token: string
-    tokenId: string
-    expiration: string
+    embedToken: string
+    embedUrl: string
+    reportId: string
+    expiresInMinutes: number
+    datasetId: string
+    datasetName?: string | null
+    isEffectiveIdentityRequired: boolean
+    isEffectiveIdentityRolesRequired: boolean
 }

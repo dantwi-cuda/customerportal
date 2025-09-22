@@ -18,7 +18,7 @@ const navigationConfig: NavigationTree[] = [
     // Home menu - Common for all users
     {
         key: 'home',
-        path: '/home',
+        path: '/app/tenant-dashboard',
         title: 'Home',
         translateKey: 'nav.home',
         icon: 'home',
@@ -307,23 +307,12 @@ const navigationConfig: NavigationTree[] = [
     },
 
     // Standard Menu Items (for TENANT_ADMIN and TENANT_USER)
-    // Re-using/adjusting existing 'dashboard', 'shopKPI', 'accounting', 'subscriptions', 'reports'
-    // The main 'Dashboard' item for users
-    {
-        key: 'dashboard',
-        path: '/dashboard', // User-facing dashboard
-        title: 'Dashboard',
-        translateKey: 'nav.dashboard',
-        icon: 'dashboard',
-        type: NAV_ITEM_TYPE_ITEM,
-        authority: [TENANT_ADMIN, END_USER], // TENANT_USER is END_USER
-        subMenu: [],
-    },
+    // Re-using/adjusting existing 'shopKPI', 'accounting', 'subscriptions', 'reports'
     // Tenant Analytics Dashboard
     {
         key: 'tenantDashboard',
         path: '/app/tenant-dashboard',
-        title: 'Analytics Dashboard',
+        title: 'Dashboard',
         translateKey: 'nav.tenantDashboard',
         icon: 'chart',
         type: NAV_ITEM_TYPE_ITEM,
@@ -452,10 +441,30 @@ const navigationConfig: NavigationTree[] = [
         authority: [TENANT_ADMIN, END_USER],
         subMenu: [
             {
+                key: 'accounting.masterChartOfAccount',
+                path: '/tenantportal/accounting/master-chart-of-account',
+                title: 'Master Chart of Account',
+                translateKey: 'nav.accounting.masterChartOfAccount',
+                icon: '', // Add icon if available
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [TENANT_ADMIN],
+                subMenu: [],
+            },
+            {
                 key: 'accounting.chartOfAccounts',
                 path: '/accounting/chart-of-accounts',
                 title: 'Chart of Accounts',
                 translateKey: 'nav.accounting.chartOfAccounts',
+                icon: '', // Add icon if available
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [TENANT_ADMIN, END_USER],
+                subMenu: [],
+            },
+            {
+                key: 'accounting.shopChartOfAccount',
+                path: '/accounting/shop-chart-of-account',
+                title: 'Shop Chart of Account',
+                translateKey: 'nav.accounting.shopChartOfAccount',
                 icon: '', // Add icon if available
                 type: NAV_ITEM_TYPE_ITEM,
                 authority: [TENANT_ADMIN, END_USER],
@@ -480,17 +489,17 @@ const navigationConfig: NavigationTree[] = [
         translateKey: 'nav.subscriptions',
         icon: 'subscription',
         type: NAV_ITEM_TYPE_ITEM,
-        authority: [TENANT_ADMIN, END_USER],
+        authority: [TENANT_ADMIN, END_USER, 'subscription.view', 'subscription.all'],
         subMenu: [],
     },
     {
         key: 'reports',
-        path: '/reports', // User-facing reports listing/gallery (keep this path for regular users)
+        path: '/reports', // User-facing reports listing/gallery
         title: 'Reports',
         translateKey: 'nav.reports',
         icon: 'reports',
         type: NAV_ITEM_TYPE_ITEM,
-        authority: [END_USER], // Removed TENANT_ADMIN as they'll use the admin version
+        authority: [TENANT_ADMIN, END_USER, 'report.read', 'report.all'], // Added permissions for reports access
         subMenu: [],
     },
 

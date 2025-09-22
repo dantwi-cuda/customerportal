@@ -26,6 +26,7 @@ import {
     HiOutlinePlus,
     HiOutlineX,
     HiOutlineCheck,
+    HiOutlineArrowLeft,
 } from 'react-icons/hi'
 
 interface Option {
@@ -94,7 +95,7 @@ const WorkspaceAssignmentsPage = () => {
             console.log('Workspace ID from API:', workspaceData.id)
             console.log(
                 'Workspace workspaceId from API:',
-                workspaceData.workspaceId,
+                workspaceData.workspaceID,
             )
 
             // Find assignment matching this workspace and customer
@@ -496,23 +497,33 @@ const WorkspaceAssignmentsPage = () => {
     }
 
     return (
-        <div className="p-4">
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                    <h3 className="text-lg font-medium">
-                        Workspace: {workspace.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                        Manage user and role assignments
-                    </p>
+        <div className="p-2 sm:p-4 space-y-4">
+            {/* Header and Actions Card */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            icon={<HiOutlineArrowLeft />}
+                            onClick={() =>
+                                navigate('/tenantportal/tenant/workspaces')
+                            }
+                        >
+                            Back to Workspaces
+                        </Button>
+                        <div>
+                            <h4 className="mb-1">Workspace Assignments</h4>
+                            <p className="text-gray-600 text-sm">
+                                Manage user and role assignments for:{' '}
+                                {workspace.name}
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <Button
-                    onClick={() => navigate('/tenantportal/tenant/workspaces')}
-                >
-                    Back to Workspaces
-                </Button>
-            </div>
+            </Card>
 
+            {/* Content Card */}
             <Card>
                 <Tabs
                     defaultValue="users"

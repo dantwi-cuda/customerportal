@@ -391,13 +391,13 @@ const ReportsPage = () => {
                     break
                 case 'enable':
                     await ReportService.bulkSetReportStatus(
-                        selectedReportIds,
+                        selectedReportIds.map((id) => parseInt(id, 10)),
                         true,
                     )
                     break
                 case 'disable':
                     await ReportService.bulkSetReportStatus(
-                        selectedReportIds,
+                        selectedReportIds.map((id) => parseInt(id, 10)),
                         false,
                     )
                     break

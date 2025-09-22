@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Auth Test</h1>
+    <p>Check console for authentication mapping test results</p>
+
+    <script>
+        // Simulate the API response
+        const mockApiResponse = {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "user": {
+                "id": "5835e182-f8f3-497b-bda3-374e8f0199dc",
+                "email": "dev.admin@test.com",
+                "name": "Dev Admin",
+                "status": "Active",
+                "isCustomerUser": false,
+                "isCCIUser": true,
+                "createdAt": "2025-05-12T20:38:54.556286",
+                "lastLoginAt": "2025-07-03T20:42:58.9312217Z",
+                "roles": ["CS-Admin"],
+                "tenantId": null,
+                "isActive": true
+            }
+        };
+
+        // Simulate the handleSignIn mapping logic
+        function mapUserRolesToAuthority(user) {
+            const userToStore = {
+                ...user,
+                authority: user.roles || user.authority || []
+            };
+            delete userToStore.roles;
+            return userToStore;
+        }
+
+        // Test the mapping
+        const mappedUser = mapUserRolesToAuthority(mockApiResponse.user);
+        console.log('Original user:', mockApiResponse.user);
+        console.log('Mapped user:', mappedUser);
+        console.log('Authority contains CS-Admin:', mappedUser.authority?.includes('CS-Admin'));
+        
+        // Test permission checks (like in ProgramsListPage)
+        const hasViewAccess = mappedUser.authority?.some((role) =>
+            [
+                'CS-Admin',
+                'CS-User',
+                'Tenant-Admin',
+                'Tenant-User',
+                'program.view',
+                'program.edit',
+            ].includes(role),
+        );
+        
+        console.log('Has view access (should be true):', hasViewAccess);
+    </script>
+</body>
+</html>
