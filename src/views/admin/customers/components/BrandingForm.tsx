@@ -1,14 +1,14 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { FormItem, FormContainer } from '@/components/ui/Form'
-import { Upload } from '@/components/ui/Upload'
 import { Button } from '@/components/ui/Button'
-import { Avatar } from '@/components/ui/Avatar' // For logo preview
 import { Field, Form, Formik } from 'formik'
 import * as Yup from 'yup'
+import ImageUploadComponent from '@/components/shared/ImageUploadComponent'
 
 export type BrandingFormValues = {
-    logo?: File | string | null // Can be File object for new upload, string for existing URL, or null
+    logo?: File | string | null
     backgroundImage?: File | string | null
+    icon?: File | string | null // Added icon field
 }
 
 interface BrandingFormProps {
@@ -18,138 +18,151 @@ interface BrandingFormProps {
     isSubmitting?: boolean
     existingLogoUrl?: string
     existingBackgroundImageUrl?: string
+    existingIconUrl?: string // Added icon URL prop
 }
 
 const validationSchema = Yup.object().shape({
-    // Add validation if specific file types or sizes are required
-    // logo: Yup.mixed().test('fileType', 'Unsupported File Format', (value) => ...),
-    // backgroundImage: Yup.mixed().test('fileSize', 'File too large', (value) => ...),
+    logo: Yup.mixed().nullable(),
+    backgroundImage: Yup.mixed().nullable(),
+    icon: Yup.mixed().nullable(), // Added icon validation
 })
 
 const BrandingForm: React.FC<BrandingFormProps> = ({
-    initialValues = { logo: null, backgroundImage: null },
+    initialValues = { logo: null, backgroundImage: null, icon: null },
     onSubmit,
     isSubmitting,
     existingLogoUrl,
     existingBackgroundImageUrl,
+    existingIconUrl, // Added icon URL
 }) => {
-    const [logoPreview, setLogoPreview] = useState<string | null>(
-        existingLogoUrl || null,
-    )
-    const [bgPreview, setBgPreview] = useState<string | null>(
-        existingBackgroundImageUrl || null,
-    )
-
-    const handleLogoUpload = (files: File[], setFieldValue: any) => {
-        if (files && files.length > 0) {
-            const file = files[0]
-            setFieldValue('logo', file)
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setLogoPreview(reader.result as string)
-            }
-            reader.readAsDataURL(file)
-        } else {
-            setFieldValue('logo', null)
-            setLogoPreview(existingLogoUrl || null) // Revert to existing if upload is cleared
-        }
-    }
-
-    const handleBackgroundUpload = (files: File[], setFieldValue: any) => {
-        if (files && files.length > 0) {
-            const file = files[0]
-            setFieldValue('backgroundImage', file)
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setBgPreview(reader.result as string)
-            }
-            reader.readAsDataURL(file)
-        } else {
-            setFieldValue('backgroundImage', null)
-            setBgPreview(existingBackgroundImageUrl || null) // Revert to existing
-        }
-    }
-
     return (
         <Formik
-            initialValues={initialValues} // Ensure initialValues are correctly passed or default
+            initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={onSubmit}
-            enableReinitialize // Important if initialValues can change
+            enableReinitialize
         >
-            {({ errors, touched, setFieldValue }) => (
+            {({ setFieldValue }) => (
                 <Form>
                     <FormContainer>
-                        <FormItem
-                            label="Logo"
-                            invalid={Boolean(errors.logo && touched.logo)}
-                            errorMessage={errors.logo as string}
-                        >
-                            <Upload
-                                draggable
-                                onChange={(files) =>
-                                    handleLogoUpload(files, setFieldValue)
-                                }
-                                onFileRemove={() =>
-                                    handleLogoUpload([], setFieldValue)
-                                } // Clear preview and value
-                                showList={false} // Hide default file list, we use Avatar for preview
-                                accept=".png, .jpg, .jpeg, .gif, .svg" // Specify acceptable file types
-                            >
-                                {logoPreview ? (
-                                    <Avatar
-                                        size={100}
-                                        src={logoPreview}
-                                        shape="square"
-                                    />
-                                ) : (
-                                    <div className="text-center p-4 border border-dashed rounded-md">
-                                        Click or drag file to this area to
-                                        upload logo
-                                    </div>
-                                )}
-                            </Upload>
-                        </FormItem>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                            {/* Logo Upload */}
+                            <div>
+                                <h5 className="mb-4">Customer Logo</h5>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Upload your customer's logo. Recommended:
+                                    200x100px, max 2MB.
+                                </p>
+                                <Field name="logo">
+                                    {({ field, meta }: any) => (
+                                        <ImageUploadComponent
+                                            label="Company Logo"
+                                            description="Upload company logo"
+                                            currentImageUrl={existingLogoUrl}
+                                            onUpload={async (file: File) => {
+                                                setFieldValue('logo', file)
+                                                return {
+                                                    url: URL.createObjectURL(
+                                                        file,
+                                                    ),
+                                                    fileName: file.name,
+                                                    originalFileName: file.name,
+                                                    contentType: file.type,
+                                                    sizeInBytes: file.size,
+                                                    uploadedAt:
+                                                        new Date().toISOString(),
+                                                }
+                                            }}
+                                            accept="image/*"
+                                            maxSizeInMB={2}
+                                            maxWidth={500}
+                                            maxHeight={250}
+                                        />
+                                    )}
+                                </Field>
+                            </div>
 
-                        <FormItem
-                            label="Background Image"
-                            invalid={Boolean(
-                                errors.backgroundImage &&
-                                    touched.backgroundImage,
-                            )}
-                            errorMessage={errors.backgroundImage as string}
-                        >
-                            <Upload
-                                draggable
-                                onChange={(files) =>
-                                    handleBackgroundUpload(files, setFieldValue)
-                                }
-                                onFileRemove={() =>
-                                    handleBackgroundUpload([], setFieldValue)
-                                }
-                                showList={false}
-                                accept=".png, .jpg, .jpeg"
-                            >
-                                {bgPreview ? (
-                                    <img
-                                        src={bgPreview}
-                                        alt="Background Preview"
-                                        style={{
-                                            maxHeight: 150,
-                                            width: 'auto',
-                                        }}
-                                        className="rounded-md"
-                                    />
-                                ) : (
-                                    <div className="text-center p-4 border border-dashed rounded-md">
-                                        Click or drag file to this area to
-                                        upload background image
-                                    </div>
-                                )}
-                            </Upload>
-                        </FormItem>
+                            {/* Background Image Upload */}
+                            <div>
+                                <h5 className="mb-4">Background Image</h5>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Upload a background image for the customer
+                                    portal. Recommended: 1920x1080px, max 5MB.
+                                </p>
+                                <Field name="backgroundImage">
+                                    {({ field, meta }: any) => (
+                                        <ImageUploadComponent
+                                            label="Background Image"
+                                            description="Upload background image"
+                                            currentImageUrl={
+                                                existingBackgroundImageUrl
+                                            }
+                                            onUpload={async (file: File) => {
+                                                setFieldValue(
+                                                    'backgroundImage',
+                                                    file,
+                                                )
+                                                return {
+                                                    url: URL.createObjectURL(
+                                                        file,
+                                                    ),
+                                                    fileName: file.name,
+                                                    originalFileName: file.name,
+                                                    contentType: file.type,
+                                                    sizeInBytes: file.size,
+                                                    uploadedAt:
+                                                        new Date().toISOString(),
+                                                }
+                                            }}
+                                            accept="image/*"
+                                            maxSizeInMB={5}
+                                            aspectRatio="16:9"
+                                        />
+                                    )}
+                                </Field>
+                            </div>
 
-                        <FormItem>
+                            {/* Icon Upload */}
+                            <div>
+                                <h5 className="mb-4">Portal Icon</h5>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Upload a favicon/icon for the customer
+                                    portal. Recommended: 32x32px, max 1MB.
+                                </p>
+                                <Field name="icon">
+                                    {({ field, meta }: any) => (
+                                        <ImageUploadComponent
+                                            label="Portal Icon"
+                                            description="Upload portal icon/favicon"
+                                            currentImageUrl={existingIconUrl}
+                                            onUpload={async (file: File) => {
+                                                setFieldValue('icon', file)
+                                                return {
+                                                    url: URL.createObjectURL(
+                                                        file,
+                                                    ),
+                                                    fileName: file.name,
+                                                    originalFileName: file.name,
+                                                    contentType: file.type,
+                                                    sizeInBytes: file.size,
+                                                    uploadedAt:
+                                                        new Date().toISOString(),
+                                                }
+                                            }}
+                                            accept="image/*"
+                                            maxSizeInMB={1}
+                                            minWidth={16}
+                                            minHeight={16}
+                                            maxWidth={512}
+                                            maxHeight={512}
+                                            aspectRatio="1:1"
+                                        />
+                                    )}
+                                </Field>
+                            </div>
+                        </div>
+
+                        <FormItem className="mt-8">
                             <Button
                                 variant="solid"
                                 type="submit"

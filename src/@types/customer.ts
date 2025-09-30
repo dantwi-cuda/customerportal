@@ -89,6 +89,7 @@ export interface CustomerBranding {
     logoUrl: string
     backgroundUrl?: string
     faviconUrl?: string
+    iconUrl?: string // Added for consistency with BrandingForm
     primaryColor?: string
     secondaryColor?: string
 }

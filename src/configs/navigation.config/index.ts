@@ -78,6 +78,16 @@ const navigationConfig: NavigationTree[] = [
                 subMenu: [],
             },
             {
+                key: 'tenantportal.features',
+                path: '/tenantportal/features',
+                title: 'Feature Management',
+                translateKey: 'nav.tenantportal.features',
+                icon: 'feature',
+                type: NAV_ITEM_TYPE_ITEM,
+                authority: [CS_ADMIN, CS_USER],
+                subMenu: [],
+            },
+            {
                 key: 'tenantportal.workspaces',
                 path: '/tenantportal/workspaces',
                 title: 'Workspace Management',

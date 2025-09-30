@@ -4080,6 +4080,92 @@
         }
       }
     },
+    "/api/customers/{id}/icon": {
+      "post": {
+        "tags": [
+          "CustomerBranding"
+        ],
+        "summary": "Upload icon image for customer portal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "Image"
+                ],
+                "type": "object",
+                "properties": {
+                  "Image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "Image": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageUploadResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageUploadResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageUploadResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CustomerBranding"
+        ],
+        "summary": "Delete icon image for customer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/api/customers/{id}/images/token": {
       "get": {
         "tags": [
@@ -4109,7 +4195,7 @@
         "tags": [
           "CustomerBranding"
         ],
-        "summary": "Get customer details by subdomain for portal branding",
+        "summary": "Get tenant branding information by subdomain for portal customization",
         "parameters": [
           {
             "name": "subdomain",
@@ -4126,17 +4212,47 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CustomerDto"
+                  "$ref": "#/components/schemas/TenantBrandingResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CustomerDto"
+                  "$ref": "#/components/schemas/TenantBrandingResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CustomerDto"
+                  "$ref": "#/components/schemas/TenantBrandingResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/health": {
+      "get": {
+        "tags": [
+          "CustomerBranding"
+        ],
+        "summary": "Health check endpoint with CDN configuration",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponseDto"
                 }
               }
             }
@@ -15394,6 +15510,24 @@
         },
         "additionalProperties": false
       },
+      "AssetDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AssignProgramsRequest": {
         "type": "object",
         "properties": {
@@ -15845,6 +15979,21 @@
         },
         "additionalProperties": false
       },
+      "BrandingAssetsDto": {
+        "type": "object",
+        "properties": {
+          "logo": {
+            "$ref": "#/components/schemas/AssetDto"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/AssetDto"
+          },
+          "background": {
+            "$ref": "#/components/schemas/AssetDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "BulkCreateGeneralLedgerDto": {
         "type": "object",
         "properties": {
@@ -16109,6 +16258,19 @@
               "$ref": "#/components/schemas/BulkUploadErrorDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CacheHeadersDto": {
+        "type": "object",
+        "properties": {
+          "maxAge": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eTag": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -18656,6 +18818,22 @@
         },
         "additionalProperties": false
       },
+      "HealthCheckResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "cdnEndpoint": {
+            "type": "string",
+            "nullable": true
+          },
+          "cacheHeaders": {
+            "$ref": "#/components/schemas/CacheHeadersDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "ImageUploadResponseDto": {
         "type": "object",
         "properties": {
@@ -19255,6 +19433,20 @@
             "nullable": true
           },
           "category": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalDisplayNameDto": {
+        "type": "object",
+        "properties": {
+          "bold": {
+            "type": "string",
+            "nullable": true
+          },
+          "normal": {
             "type": "string",
             "nullable": true
           }
@@ -22432,6 +22624,46 @@
           "email": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantBrandingDataDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "portalDisplayName": {
+            "$ref": "#/components/schemas/PortalDisplayNameDto"
+          },
+          "subtitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "assets": {
+            "$ref": "#/components/schemas/BrandingAssetsDto"
+          },
+          "theme": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantBrandingResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TenantBrandingDataDto"
           }
         },
         "additionalProperties": false

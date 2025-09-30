@@ -16,8 +16,12 @@ import CredentialsForm, {
 } from './components/CredentialsForm'
 import BrandingForm, { BrandingFormValues } from './components/BrandingForm'
 import * as CustomerService from '@/services/CustomerService'
+import {
+    getCustomerByIdWithBranding,
+    updateCustomerWithBranding,
+} from '@/services/CustomerService'
 import FileService from '@/services/FileService' // Import FileService
-import type { CustomerDetailsResponse } from '@/@types/customer'
+import type { CustomerBrandingResponse } from '@/services/CustomerService'
 
 const EditCustomerPage = () => {
     const navigate = useNavigate()
@@ -29,7 +33,7 @@ const EditCustomerPage = () => {
     const [activeTab, setActiveTab] = useState('info')
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
-    const [customer, setCustomer] = useState<CustomerDetailsResponse | null>(
+    const [customer, setCustomer] = useState<CustomerBrandingResponse | null>(
         null,
     )
 
@@ -54,7 +58,7 @@ const EditCustomerPage = () => {
         setCustomer(null)
         try {
             console.log(`Fetching customer with ID: ${customerId}`)
-            const data = await CustomerService.getCustomerById(customerId)
+            const data = await getCustomerByIdWithBranding(customerId)
             console.log('Customer data received in EditCustomerPage:', data)
             console.log('Customer data fields:', {
                 name: data?.name,
@@ -65,10 +69,9 @@ const EditCustomerPage = () => {
                 portalDisplayName: data?.portalDisplayName,
                 portalDisplaySubName: data?.portalDisplaySubName,
                 portalDisplayPageSubTitle: data?.portalDisplayPageSubTitle,
-                portalWindowIcon: data?.portalWindowIcon,
                 isActive: data?.isActive,
             })
-            if (data && data.id !== '0') {
+            if (data && data.id !== 0) {
                 // Check if data is valid and not the "Unknown" customer
                 setCustomer(data)
             } else {
@@ -113,11 +116,10 @@ const EditCustomerPage = () => {
                 portalDisplaySubName: values.portalDisplaySubName || '',
                 portalDisplayPageSubTitle:
                     values.portalDisplayPageSubTitle || '',
-                portalWindowIcon: values.portalWindowIcon || '',
                 isActive: values.isActive ?? true,
             }
 
-            const updatedCustomer = await CustomerService.updateCustomer(
+            const updatedCustomer = await updateCustomerWithBranding(
                 id,
                 updateData,
             )
@@ -156,10 +158,6 @@ const EditCustomerPage = () => {
                 prev
                     ? {
                           ...prev,
-                          credentials: {
-                              ...prev.credentials,
-                              ...credsToUpdate,
-                          },
                       }
                     : null,
             )
@@ -193,15 +191,16 @@ const EditCustomerPage = () => {
         }
         setSaving(true)
         try {
-            let logoUrl = customer.branding?.logoUrl || ''
-            let backgroundUrl = customer.branding?.backgroundUrl || ''
+            let logoUrl = customer.logoUrl || ''
+            let backgroundUrl = customer.backgroundImageUrl || ''
+            let iconUrl = customer.portalWindowIcon || ''
 
             // Upload logo if a new file is provided
             if (values.logo && values.logo instanceof File) {
                 try {
                     const uploadResponse = await FileService.uploadFile(
                         values.logo,
-                        { type: 'logo', customerId: customer.id },
+                        { type: 'logo', customerId: customer.id.toString() },
                     )
                     logoUrl = uploadResponse.url
                 } catch (uploadError) {
@@ -228,7 +227,10 @@ const EditCustomerPage = () => {
                 try {
                     const uploadResponse = await FileService.uploadFile(
                         values.backgroundImage,
-                        { type: 'backgroundImage', customerId: customer.id },
+                        {
+                            type: 'backgroundImage',
+                            customerId: customer.id.toString(),
+                        },
                     )
                     backgroundUrl = uploadResponse.url
                 } catch (uploadError) {
@@ -253,40 +255,36 @@ const EditCustomerPage = () => {
                 backgroundUrl = '' // Explicitly cleared
             }
 
-            const updatedBranding = {
-                ...customer.branding,
-                displayTitle: customer.name || 'Default Title',
-                logoUrl: logoUrl,
-                backgroundUrl: backgroundUrl,
+            // Upload icon if a new file is provided
+            if (values.icon && values.icon instanceof File) {
+                try {
+                    const uploadResponse = await FileService.uploadFile(
+                        values.icon,
+                        { type: 'icon', customerId: customer.id.toString() },
+                    )
+                    iconUrl = uploadResponse.url
+                } catch (uploadError) {
+                    console.error('Error uploading icon:', uploadError)
+                    toast.push(
+                        <Notification title="Icon Upload Failed" type="danger">
+                            Could not upload icon. Please try again.
+                        </Notification>,
+                    )
+                    setSaving(false)
+                    return
+                }
+            } else if (typeof values.icon === 'string') {
+                iconUrl = values.icon // Use existing or manually entered URL
+            } else if (values.icon === null) {
+                iconUrl = '' // Explicitly cleared
             }
 
-            const updatedCustomer: CustomerDetailsResponse = {
+            // Create updated customer object to reflect changes in UI
+            const updatedCustomer: CustomerBrandingResponse = {
                 ...customer,
-                branding: updatedBranding,
-            }
-
-            // await CustomerService.updateCustomerBranding(
-            //     id, // This 'id' could be undefined if not checked
-            //     updatedBranding as any,
-            // )
-
-            // Ensure 'id' is defined before calling the service
-            if (id) {
-                await CustomerService.updateCustomerBranding(
-                    id,
-                    updatedBranding as any,
-                )
-            } else {
-                console.error(
-                    'Customer ID is undefined, cannot update branding.',
-                )
-                toast.push(
-                    <Notification title="Error" type="danger">
-                        Cannot update branding: Customer ID is missing.
-                    </Notification>,
-                )
-                setSaving(false) // Reset saving state
-                return // Exit if no id
+                logoUrl: logoUrl,
+                backgroundImageUrl: backgroundUrl,
+                portalWindowIcon: iconUrl,
             }
 
             setCustomer(updatedCustomer)
@@ -377,8 +375,6 @@ const EditCustomerPage = () => {
                                     portalDisplayPageSubTitle:
                                         customer.portalDisplayPageSubTitle ||
                                         '',
-                                    portalWindowIcon:
-                                        customer.portalWindowIcon || '',
                                     isActive: customer.isActive ?? true,
                                 }
                                 console.log(
@@ -398,8 +394,6 @@ const EditCustomerPage = () => {
                                         initialValues.portalDisplaySubName,
                                     portalDisplayPageSubTitle:
                                         initialValues.portalDisplayPageSubTitle,
-                                    portalWindowIcon:
-                                        initialValues.portalWindowIcon,
                                     isActive: initialValues.isActive,
                                 })
                                 return (
@@ -409,7 +403,6 @@ const EditCustomerPage = () => {
                                         isSubmitting={
                                             saving && activeTab === 'info'
                                         }
-                                        customer={customer}
                                     />
                                 )
                             })()}
@@ -419,8 +412,7 @@ const EditCustomerPage = () => {
                         <div className="mt-6">
                             <CredentialsForm
                                 initialValues={{
-                                    username:
-                                        customer.credentials?.biUsername || '',
+                                    username: '', // Start with empty for editing
                                     // Password field is for new input, not displaying existing
                                 }}
                                 onSubmit={handleSaveCredentials}
@@ -435,19 +427,20 @@ const EditCustomerPage = () => {
                         <div className="mt-6">
                             <BrandingForm
                                 initialValues={{
-                                    logo: customer.branding?.logoUrl || null,
+                                    logo: customer.logoUrl || null,
                                     backgroundImage:
-                                        customer.branding?.backgroundUrl ||
-                                        null,
+                                        customer.backgroundImageUrl || null,
+                                    icon: customer.portalWindowIcon || null,
                                 }}
                                 onSubmit={handleSaveBranding}
                                 isSubmitting={
                                     saving && activeTab === 'branding'
                                 }
-                                existingLogoUrl={customer.branding?.logoUrl}
+                                existingLogoUrl={customer.logoUrl}
                                 existingBackgroundImageUrl={
-                                    customer.branding?.backgroundUrl
+                                    customer.backgroundImageUrl
                                 }
+                                existingIconUrl={customer.portalWindowIcon}
                             />
                         </div>
                     </Tabs.TabContent>

@@ -5,7 +5,6 @@ import VerticalMenuContent from '@/components/template/VerticalMenuContent'
 import { useThemeStore } from '@/store/themeStore'
 import { useSessionUser } from '@/store/authStore'
 import { useRouteKeyStore } from '@/store/routeKeyStore'
-import navigationConfig from '@/configs/navigation.config'
 import appConfig from '@/configs/app.config'
 import { Link } from 'react-router'
 import {
@@ -16,8 +15,8 @@ import {
     LOGO_X_GUTTER,
 } from '@/constants/theme.constant'
 import type { Mode } from '@/@types/theme'
-import { useMemo, useEffect } from 'react'
-import type { NavigationTree } from '@/@types/navigation'
+import { useMemo } from 'react'
+import { useHybridNavigation } from '@/hooks/useHybridNavigation'
 
 type SideNavProps = {
     translationSetup?: boolean
@@ -37,110 +36,88 @@ const sideNavCollapseStyle = {
     minWidth: SIDE_NAV_COLLAPSED_WIDTH,
 }
 
-const SideNav = ({
-    translationSetup = appConfig.activeNavTranslation,
-    background = true,
-    className,
-    contentClass,
-    mode,
-}: SideNavProps) => {
-    const defaultMode = useThemeStore((state) => state.mode)
+const SideNav = () => {
+    const themeColor = useThemeStore((state) => state.themeSchema)
+    const mode = useThemeStore((state) => state.mode)
     const direction = useThemeStore((state) => state.direction)
     const sideNavCollapse = useThemeStore(
         (state) => state.layout.sideNavCollapse,
     )
-
     const currentRouteKey = useRouteKeyStore((state) => state.currentRouteKey)
+    const userAuthority = useSessionUser((state) => state.user?.authority)
 
-    const userAuthority = useSessionUser((state) => state.user.authority) || []
+    const { navigationItems } = useHybridNavigation()
 
-    // Add debugging to check user authority and menu filtering
-    useEffect(() => {
-        console.log('SideNav - User authority:', userAuthority)
-        console.log('Navigation config:', navigationConfig)
-    }, [userAuthority])
+    const sideNavStyle = useMemo(
+        () => ({
+            width: sideNavCollapse ? SIDE_NAV_COLLAPSED_WIDTH : SIDE_NAV_WIDTH,
+            minWidth: sideNavCollapse
+                ? SIDE_NAV_COLLAPSED_WIDTH
+                : SIDE_NAV_WIDTH,
+        }),
+        [sideNavCollapse],
+    )
 
-    // filter navigation tree by authority
-    const filteredNavigation: NavigationTree[] = useMemo(() => {
-        const filterTree = (nodes: NavigationTree[]): NavigationTree[] =>
-            nodes.reduce<NavigationTree[]>((acc, nav) => {
-                const hasAccess =
-                    !nav.authority?.length ||
-                    nav.authority.some((role) => userAuthority.includes(role))
+    const logoMode = useMemo(() => {
+        if (mode === 'dark') {
+            return 'light' // Use light logo on dark theme
+        }
+        return 'dark' // Use dark logo on light theme
+    }, [mode])
 
-                // Debug log for item access
-                if (nav.key === 'tenantportal') {
-                    console.log(`Menu item '${nav.key}' access check:`, {
-                        hasAccess,
-                        authority: nav.authority,
-                        userAuthority,
-                        hasMatch: nav.authority?.some((role) =>
-                            userAuthority.includes(role),
-                        ),
-                    })
-                }
+    const logoType = useMemo(() => {
+        return sideNavCollapse ? 'streamline' : 'full'
+    }, [sideNavCollapse])
 
-                if (!hasAccess) return acc
-                const item = { ...nav }
-                if (item.subMenu?.length) {
-                    const sub = filterTree(item.subMenu)
-                    if (sub.length) item.subMenu = sub
-                    else item.subMenu = []
-                }
-                acc.push(item)
-                return acc
-            }, [])
-
-        const filtered = filterTree(navigationConfig)
-        console.log('Filtered navigation:', filtered)
-        return filtered
-    }, [navigationConfig, userAuthority])
+    const menuVariant = useMemo(() => {
+        return `side-nav-${mode}`
+    }, [mode])
 
     return (
         <div
-            style={sideNavCollapse ? sideNavCollapseStyle : sideNavStyle}
-            className={classNames(
-                'side-nav',
-                background && 'side-nav-bg',
-                !sideNavCollapse && 'side-nav-expand',
-                className,
-            )}
+            className={classNames('side-nav', menuVariant)}
+            style={sideNavStyle}
         >
-            <Link
-                to={appConfig.authenticatedEntryPath}
-                className="side-nav-header flex flex-col justify-center"
-                style={{ height: HEADER_HEIGHT }}
-            >
-                <div
-                    className={classNames(
-                        'flex items-center',
-                        sideNavCollapse && 'ltr:ml-[11.5px] ltr:mr-[11.5px]',
-                        sideNavCollapse
-                            ? SIDE_NAV_CONTENT_GUTTER
-                            : LOGO_X_GUTTER,
-                    )}
+            <div className="side-nav-header">
+                <Link
+                    className={classNames('side-nav-logo', {
+                        [LOGO_X_GUTTER]: !sideNavCollapse,
+                    })}
+                    to={'/'}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: sideNavCollapse
+                            ? 'center'
+                            : 'flex-start',
+                        height: `${HEADER_HEIGHT}px`,
+                        padding: sideNavCollapse ? '0' : undefined,
+                    }}
                 >
                     <Logo
-                        imgClass="max-h-10"
-                        mode={mode || defaultMode}
-                        type={sideNavCollapse ? 'streamline' : 'full'}
+                        mode={logoMode}
+                        type={logoType}
+                        logoWidth={sideNavCollapse ? '32px' : 'auto'}
                     />
-                    {!sideNavCollapse && (
-                        <span className="ml-3 text-xl font-bold text-gray-800 dark:text-white">
-                            ClaimsCorp
-                        </span>
+                </Link>
+            </div>
+            <div className="side-nav-content">
+                <ScrollBar
+                    direction={direction}
+                    className={classNames(
+                        'side-nav-scroll',
+                        SIDE_NAV_CONTENT_GUTTER,
                     )}
-                </div>
-            </Link>
-            <div className={classNames('side-nav-content', contentClass)}>
-                <ScrollBar style={{ height: '100%' }} direction={direction}>
+                    style={{
+                        height: `calc(100% - ${HEADER_HEIGHT}px)`,
+                    }}
+                >
                     <VerticalMenuContent
                         collapsed={sideNavCollapse}
-                        navigationTree={filteredNavigation}
+                        navigationTree={navigationItems}
                         routeKey={currentRouteKey}
-                        direction={direction}
-                        translationSetup={translationSetup}
-                        userAuthority={userAuthority}
+                        userAuthority={userAuthority || []}
+                        onMenuItemClick={() => {}}
                     />
                 </ScrollBar>
             </div>

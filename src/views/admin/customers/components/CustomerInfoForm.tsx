@@ -5,7 +5,6 @@ import { Field, Form, Formik } from 'formik'
 import * as Yup from 'yup'
 import { Button } from '@/components/ui/Button'
 import { Switcher } from '@/components/ui/Switcher'
-import { CustomerDetailsResponse } from '@/@types/customer'
 import classNames from '@/utils/classNames'
 import { TbCheck } from 'react-icons/tb'
 import presetThemeSchemaConfig from '@/configs/preset-theme-schema.config'
@@ -19,7 +18,6 @@ export type CustomerInfoFormValues = {
     portalDisplayName?: string
     portalDisplaySubName?: string
     portalDisplayPageSubTitle?: string
-    portalWindowIcon?: string
     isActive?: boolean
 }
 
@@ -28,7 +26,6 @@ interface CustomerInfoFormProps {
     // eslint-disable-next-line no-unused-vars
     onSubmit: (values: CustomerInfoFormValues, helpers: any) => void
     isSubmitting?: boolean
-    customer?: CustomerDetailsResponse
 }
 
 const validationSchema = Yup.object().shape({
@@ -40,7 +37,6 @@ const validationSchema = Yup.object().shape({
     portalDisplayName: Yup.string(),
     portalDisplaySubName: Yup.string(),
     portalDisplayPageSubTitle: Yup.string(),
-    portalWindowIcon: Yup.string(),
 })
 
 const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
@@ -53,7 +49,6 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
         portalDisplayName: '',
         portalDisplaySubName: '',
         portalDisplayPageSubTitle: '',
-        portalWindowIcon: '',
         isActive: true,
     },
     onSubmit,
@@ -69,7 +64,6 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
         portalDisplayName: initialValues.portalDisplayName,
         portalDisplaySubName: initialValues.portalDisplaySubName,
         portalDisplayPageSubTitle: initialValues.portalDisplayPageSubTitle,
-        portalWindowIcon: initialValues.portalWindowIcon,
         isActive: initialValues.isActive,
     })
 
@@ -91,7 +85,6 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                     portalDisplayName: values.portalDisplayName,
                     portalDisplaySubName: values.portalDisplaySubName,
                     portalDisplayPageSubTitle: values.portalDisplayPageSubTitle,
-                    portalWindowIcon: values.portalWindowIcon,
                     isActive: values.isActive,
                 })
                 return (
@@ -304,31 +297,6 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                                                 type="text"
                                                 autoComplete="off"
                                                 placeholder="Enter portal display page sub title"
-                                                invalid={
-                                                    meta.touched && meta.error
-                                                }
-                                            />
-                                        )}
-                                    </Field>
-                                </FormItem>
-
-                                <FormItem
-                                    label="Portal Window Icon"
-                                    invalid={
-                                        !!(
-                                            errors.portalWindowIcon &&
-                                            touched.portalWindowIcon
-                                        )
-                                    }
-                                    errorMessage={errors.portalWindowIcon}
-                                >
-                                    <Field name="portalWindowIcon">
-                                        {({ field, meta }: any) => (
-                                            <Input
-                                                {...field}
-                                                type="text"
-                                                autoComplete="off"
-                                                placeholder="Enter portal window icon URL"
                                                 invalid={
                                                     meta.touched && meta.error
                                                 }

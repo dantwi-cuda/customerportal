@@ -12,6 +12,47 @@ import type {
     CustomerBackgroundRequest
 } from '@/@types/customer'
 
+// Customer Branding API Response Types (based on documentation)
+export interface CustomerBrandingResponse {
+    id: number
+    name: string
+    subdomain: string
+    address?: string
+    logoUrl?: string
+    backgroundImageUrl?: string
+    portalWindowIcon?: string
+    theme?: string
+    legacyBusinessNetworkID?: string
+    portalDisplayName?: string
+    portalDisplaySubName?: string
+    portalDisplayPageSubTitle?: string
+    isActive: boolean
+    createdAt: string
+    updatedAt: string
+}
+
+export interface CreateCustomerDto extends Record<string, unknown> {
+    name: string
+    subdomain: string
+    address?: string
+    theme?: string
+    legacyBusinessNetworkID?: string
+    portalDisplayName?: string
+    portalDisplaySubName?: string
+    portalDisplayPageSubTitle?: string
+}
+
+export interface ImageUploadResponse {
+    url: string
+    fileName: string
+    originalFileName: string
+    contentType: string
+    sizeInBytes: number
+    width?: number
+    height?: number
+    uploadedAt: string
+}
+
 // Convert API Customer model to frontend CustomerDetailsResponse model
 function mapApiCustomerToFrontend(apiCustomer: any): CustomerDetailsResponse {
     console.log("Raw API customer data:", apiCustomer);
@@ -234,4 +275,199 @@ export async function endCustomerSession(): Promise<void> {
         url: endpointConfig.customers.endCustomerSession,
         method: 'post'
     });
+}
+
+// =================
+// Customer Branding API Methods (Priority over CustomerManagement)
+// Based on CustomerBranding-React-Integration-Guide.md
+// =================
+
+/**
+ * Create customer using CustomerBranding API
+ * POST /api/customers
+ */
+export async function createCustomerWithBranding(data: CreateCustomerDto): Promise<CustomerBrandingResponse> {
+    try {
+        const response = await ApiService.fetchDataWithAxios<CustomerBrandingResponse>({
+            url: '/api/customers',
+            method: 'POST',
+            data: data as Record<string, unknown>
+        });
+        return response;
+    } catch (error) {
+        console.error('Error creating customer with branding:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update customer using CustomerBranding API
+ * PUT /api/customers/{id}
+ */
+export async function updateCustomerWithBranding(id: string, data: Partial<CreateCustomerDto>): Promise<CustomerBrandingResponse> {
+    try {
+        const response = await ApiService.fetchDataWithAxios<CustomerBrandingResponse>({
+            url: `/api/customers/${id}`,
+            method: 'PUT',
+            data: data as Record<string, unknown>
+        });
+        return response;
+    } catch (error) {
+        console.error('Error updating customer with branding:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get customer by ID using CustomerBranding API
+ * GET /api/customers/{id}
+ */
+export async function getCustomerByIdWithBranding(id: string): Promise<CustomerBrandingResponse> {
+    try {
+        const response = await ApiService.fetchDataWithAxios<CustomerBrandingResponse>({
+            url: `/api/customers/${id}`,
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        console.error('Error fetching customer with branding:', error);
+        throw error;
+    }
+}
+
+/**
+ * Upload customer logo
+ * POST /api/customers/{id}/logo
+ */
+export async function uploadCustomerLogoWithBranding(id: string, imageFile: File): Promise<ImageUploadResponse> {
+    try {
+        const formData = new FormData();
+        formData.append('Image', imageFile);
+
+        const response = await ApiService.fetchDataWithAxios<ImageUploadResponse>({
+            url: `/api/customers/${id}/logo`,
+            method: 'POST',
+            data: formData as unknown as Record<string, unknown>,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response;
+    } catch (error) {
+        console.error('Error uploading customer logo:', error);
+        throw error;
+    }
+}
+
+/**
+ * Upload customer background image
+ * POST /api/customers/{id}/background
+ */
+export async function uploadCustomerBackgroundWithBranding(id: string, imageFile: File): Promise<ImageUploadResponse> {
+    try {
+        const formData = new FormData();
+        formData.append('Image', imageFile);
+
+        const response = await ApiService.fetchDataWithAxios<ImageUploadResponse>({
+            url: `/api/customers/${id}/background`,
+            method: 'POST',
+            data: formData as unknown as Record<string, unknown>,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response;
+    } catch (error) {
+        console.error('Error uploading customer background:', error);
+        throw error;
+    }
+}
+
+/**
+ * Upload customer icon/favicon
+ * POST /api/customers/{id}/icon
+ */
+export async function uploadCustomerIconWithBranding(id: string, imageFile: File): Promise<ImageUploadResponse> {
+    try {
+        const formData = new FormData();
+        formData.append('Image', imageFile);
+
+        const response = await ApiService.fetchDataWithAxios<ImageUploadResponse>({
+            url: `/api/customers/${id}/icon`,
+            method: 'POST',
+            data: formData as unknown as Record<string, unknown>,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response;
+    } catch (error) {
+        console.error('Error uploading customer icon:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete customer logo
+ * DELETE /api/customers/{id}/logo
+ */
+export async function deleteCustomerLogo(id: string): Promise<void> {
+    try {
+        await ApiService.fetchDataWithAxios<void>({
+            url: `/api/customers/${id}/logo`,
+            method: 'DELETE'
+        });
+    } catch (error) {
+        console.error('Error deleting customer logo:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete customer background
+ * DELETE /api/customers/{id}/background
+ */
+export async function deleteCustomerBackground(id: string): Promise<void> {
+    try {
+        await ApiService.fetchDataWithAxios<void>({
+            url: `/api/customers/${id}/background`,
+            method: 'DELETE'
+        });
+    } catch (error) {
+        console.error('Error deleting customer background:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete customer icon
+ * DELETE /api/customers/{id}/icon
+ */
+export async function deleteCustomerIcon(id: string): Promise<void> {
+    try {
+        await ApiService.fetchDataWithAxios<void>({
+            url: `/api/customers/${id}/icon`,
+            method: 'DELETE'
+        });
+    } catch (error) {
+        console.error('Error deleting customer icon:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get customer branding by subdomain (public endpoint)
+ * GET /api/customers/subdomain/{subdomain}
+ */
+export async function getCustomerBrandingBySubdomain(subdomain: string): Promise<CustomerBrandingResponse> {
+    try {
+        const response = await ApiService.fetchDataWithAxios<CustomerBrandingResponse>({
+            url: `/api/customers/subdomain/${subdomain}`,
+            method: 'GET'
+        });
+        return response;
+    } catch (error) {
+        console.error('Error fetching customer branding by subdomain:', error);
+        throw error;
+    }
 }

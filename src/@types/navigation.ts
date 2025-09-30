@@ -30,4 +30,10 @@ export interface NavigationTree {
             label: string
         }
     }
+    metadata?: {
+        featureKey?: string
+        category?: 'free' | 'paid'
+        isFeatureControlled?: boolean
+        description?: string
+    }
 }

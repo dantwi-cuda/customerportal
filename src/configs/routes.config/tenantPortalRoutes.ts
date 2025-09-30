@@ -73,7 +73,29 @@ const tenantPortalRoutes: Routes = [
         path: '/tenantportal/roles/edit/:id',
         component: lazy(() => import('@/views/admin/roles/RoleEditForm')),
         authority: [CS_ADMIN],
-    },    // Tenant Admin User Management (Admin Menu)
+    },
+
+    // Feature Management
+    {
+        key: 'tenantportal.features',
+        path: '/tenantportal/features',
+        component: lazy(() => import('@/views/cs-admin/feature-management/FeatureManagementDashboard')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'tenantportal.features.all',
+        path: '/tenantportal/cs-admin/features',
+        component: lazy(() => import('@/views/cs-admin/feature-management/AllFeaturesPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+    {
+        key: 'tenantportal.features.tenant-features',
+        path: '/tenantportal/cs-admin/tenant-features',
+        component: lazy(() => import('@/views/cs-admin/feature-management/TenantFeaturesPage')),
+        authority: [CS_ADMIN, CS_USER],
+    },
+
+    // Tenant Admin User Management (Admin Menu)
     {
         key: 'adminMenu.users',
         path: '/tenantportal/tenant/users',
